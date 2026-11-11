@@ -165,6 +165,13 @@ tbody tr:hover { background: #fafcf7; }
 .empty-state { text-align: center; padding: 40px 20px; color: #777; font-size: 14px; }
 .footer-brand { text-align: center; font-size: 11px; color: #9aa89a; padding: 20px 0 10px; }
 
+/* ---------- Alternador Ações / Para informação ---------- */
+.seg { display: inline-flex; border: 1px solid var(--bp-dark-green); border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
+.seg button { background: var(--bp-white); color: var(--bp-dark-green); border: none; padding: 10px 26px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: var(--bp-font); }
+.seg button + button { border-left: 1px solid var(--bp-dark-green); }
+.seg button.active { background: var(--bp-dark-green); color: var(--bp-white); }
+.seg button .n { font-weight: 400; opacity: .8; margin-left: 6px; font-size: 12px; }
+
 /* ---------- Linhas clicáveis (abrem o detalhe) ---------- */
 tbody tr.clickable { cursor: pointer; }
 tbody tr.clickable:hover { background: #eef6e4; }
@@ -250,7 +257,6 @@ tbody tr.clickable:hover { background: #eef6e4; }
             <option value="all">Todos os status</option>
             <option value="em_andamento">Em andamento</option>
             <option value="atrasada">Atrasada</option>
-            <option value="para_informacao">Para informação</option>
             <option value="concluida">Concluída</option>
             <option value="cancelada">Cancelada</option>
           </select>
@@ -259,6 +265,11 @@ tbody tr.clickable:hover { background: #eef6e4; }
           <button class="btn-small" id="clearDatesBtn" type="button">Limpar datas</button>
         </div>
         <button class="btn-primary" id="addActionBtn" style="display:none;">+ Adicionar ação</button>
+      </div>
+
+      <div class="seg" id="groupSeg">
+        <button type="button" data-g="acoes" class="active">Ações</button>
+        <button type="button" data-g="info">Para informação</button>
       </div>
 
       <div class="table-wrap">
@@ -270,7 +281,11 @@ tbody tr.clickable:hover { background: #eef6e4; }
         </table>
         <div class="empty-state" id="openActionsEmpty" style="display:none;">Nenhuma ação encontrada para os filtros selecionados.</div>
       </div>
-      <div class="pagination"><span id="rowCountLabel"></span></div>
+      <div class="pagination">
+        <button class="btn-small" id="pgPrev">« Anterior</button>
+        <span id="pgLabel"></span>
+        <button class="btn-small" id="pgNext">Próxima »</button>
+      </div>
     </section>
 
     <!-- -------- HISTÓRICO (admin) -------- -->
@@ -394,6 +409,10 @@ let allSuppliers = [];
 let histPage = 0;
 const HIST_PAGE_SIZE = 25;
 let storageClient = null;
+let group = "acoes";       // "acoes" (executáveis) | "info" (para informação)
+let allRows = [];          // linhas do painel após filtros
+let page = 0;
+const PAGE_SIZE = 50;
 let currentRows = {};      // id -> linha (painel)
 let openActionId = null;   // ação aberta no painel lateral
 
@@ -508,7 +527,8 @@ function rowHtml(r) {
   const when = r.when_quando || r.previsao_texto || r.data_reuniao;
   const where = r.where_onde || r.unidade || "—";
   const why = r.why_por_que || r.fase || "—";
-  const actionCell = isAdmin()
+  const executable = r.status !== "para_informacao";
+  const actionCell = (isAdmin() && executable)
     ? `<button class="btn-conclude" data-id="${r.id}" data-subject="${escapeHtml(what)}">Concluir</button>`
     : "—";
   return `
@@ -520,7 +540,7 @@ function rowHtml(r) {
       <td>${escapeHtml(where)}</td>
       <td class="desc-cell">${escapeHtml(why)}</td>
       <td><span class="badge ${r.status}">${STATUS_ICON[r.status]} ${STATUS_LABELS[r.status]}</span></td>
-      <td class="evidence-cell">${evidenceCellHtml(r, !(r.status === "concluida" && !isAdmin()))}</td>
+      <td class="evidence-cell">${evidenceCellHtml(r, executable && !(r.status === "concluida" && !isAdmin()))}</td>
       <td>${actionCell}</td>
     </tr>`;
 }
@@ -565,6 +585,7 @@ async function enterApp() {
   document.getElementById("mainHeadRow").innerHTML = headerHtml();
   document.getElementById("histHeadRow").innerHTML = histHeaderHtml();
 
+  applyGroupUI();
   if (admin) await loadSuppliersList();
   await loadDashboard();
 }
@@ -598,13 +619,13 @@ function dashParams() {
   return {
     supplier: isAdmin() ? document.getElementById("supplierFilterAdmin").value : session.supplier_code,
     search: document.getElementById("searchInput").value.trim(),
-    status: document.getElementById("statusFilter").value,
+    status: group === "info" ? "para_informacao" : document.getElementById("statusFilter").value,
     date_from: document.getElementById("dateFrom").value || undefined,
     date_to: document.getElementById("dateTo").value || undefined
   };
 }
-async function loadDashboard() {
-  await Promise.all([loadStatusCards(), loadActions()]);
+async function loadDashboard(keepPage) {
+  await Promise.all([loadStatusCards(), loadActions(keepPage === true)]);
 }
 async function loadStatusCards() {
   const p = dashParams();
@@ -617,26 +638,54 @@ async function loadStatusCards() {
       <div class="label">${STATUS_ICON[st]} ${STATUS_LABELS[st]}</div>
     </div>`).join("");
 }
-async function loadActions() {
+async function loadActions(keepPage) {
   const p = dashParams();
   try {
     const { data } = await api("list_open", p);
-    renderActions(data || []);
+    let rows = data || [];
+    if (group === "acoes") rows = rows.filter(r => r.status !== "para_informacao"); // só as executáveis
+    allRows = rows;
+    if (keepPage !== true) page = 0;
+    renderActions();
   } catch (e) {
     console.error(e);
     showToast("Erro ao carregar ações: " + e.message, true);
   }
 }
-function renderActions(rows) {
+function renderActions() {
   const body = document.getElementById("openActionsBody");
   const empty = document.getElementById("openActionsEmpty");
+  const total = allRows.length;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (page > pages - 1) page = pages - 1;
+  const rows = allRows.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
   currentRows = {};
   rows.forEach(r => { currentRows[r.id] = r; });
-  document.getElementById("rowCountLabel").textContent = rows.length ? `${rows.length} ação(ões)` : "";
+  document.getElementById("pgLabel").textContent = total
+    ? `Página ${page + 1} de ${pages} · ${total} ${group === "info" ? "item(ns)" : "ação(ões)"}`
+    : "";
+  document.getElementById("pgPrev").disabled = page === 0;
+  document.getElementById("pgNext").disabled = page >= pages - 1;
+  document.querySelector("#tab-dashboard .pagination").style.display = total > PAGE_SIZE ? "flex" : (total ? "flex" : "none");
   if (!rows.length) { body.innerHTML = ""; empty.style.display = "block"; return; }
   empty.style.display = "none";
   body.innerHTML = rows.map(rowHtml).join("");
 }
+document.getElementById("pgPrev").addEventListener("click", () => { if (page > 0) { page--; renderActions(); window.scrollTo({ top: 0, behavior: "smooth" }); } });
+document.getElementById("pgNext").addEventListener("click", () => { page++; renderActions(); window.scrollTo({ top: 0, behavior: "smooth" }); });
+
+/* alternador Ações / Para informação */
+function applyGroupUI() {
+  document.querySelectorAll("#groupSeg button").forEach(b => b.classList.toggle("active", b.dataset.g === group));
+  document.getElementById("statusFilter").style.display = group === "info" ? "none" : "";
+}
+document.getElementById("groupSeg").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-g]");
+  if (!btn || btn.dataset.g === group) return;
+  group = btn.dataset.g;
+  applyGroupUI();
+  loadActions();
+});
 document.getElementById("openActionsBody").addEventListener("click", tableClick);
 document.getElementById("openActionsBody").addEventListener("change", tableChange);
 
@@ -706,7 +755,7 @@ function renderDrawer({ action: r, notes, supplier }) {
   }
 
   // Evidência / arquivo anexado
-  const canUpload = !(r.status === "concluida" && !isAdmin());
+  const canUpload = r.status !== "para_informacao" && !(r.status === "concluida" && !isAdmin());
   let evi;
   if (r.evidencia_path) {
     evi = `<a href="#" id="viewEvi" data-path="${escapeHtml(r.evidencia_path)}">📎 ${escapeHtml(r.evidencia_nome || "Abrir arquivo")}</a>
@@ -726,7 +775,7 @@ function renderDrawer({ action: r, notes, supplier }) {
     </div></div>`;
 
   // Ações do admin
-  if (isAdmin() && r.status !== "concluida") {
+  if (isAdmin() && r.status !== "concluida" && r.status !== "para_informacao") {
     html += `<div class="drawer-actions"><button class="btn-conclude" id="concludeBtn" style="padding:10px 16px;font-size:14px;">Concluir ação</button></div>`;
   }
 
@@ -779,7 +828,7 @@ async function onEvidenceUpload(e, actionId, fromRow) {
     await api("evidence_register", { action_id: actionId, path, nome: file.name });
     showToast("Evidência enviada com sucesso.");
     if (!fromRow) await openDrawer(actionId);
-    loadActions();
+    loadActions(true);
   } catch (err) {
     showToast("Erro ao enviar evidência: " + err.message, true);
     input.value = "";
@@ -811,7 +860,7 @@ document.getElementById("confirmConcludeBtn").addEventListener("click", async ()
   document.getElementById("concludeModalOverlay").classList.remove("open");
   showToast("Ação concluída com sucesso.");
   if (openActionId === actionIdToConclude) await openDrawer(actionIdToConclude);
-  await loadDashboard();
+  await loadDashboard(true);
   if (document.getElementById("tab-history").style.display !== "none") loadHistory();
 });
 
@@ -855,8 +904,8 @@ document.getElementById("addActionForm").addEventListener("submit", async (e) =>
 });
 
 /* ---------------- FILTROS DO PAINEL ---------------- */
-const reloadDash = debounce(loadDashboard, 300);
-document.getElementById("searchInput").addEventListener("input", debounce(loadActions, 400));
+const reloadDash = debounce(() => loadDashboard(), 300);
+document.getElementById("searchInput").addEventListener("input", debounce(() => loadActions(), 400));
 ["supplierFilterAdmin", "statusFilter", "dateFrom", "dateTo"].forEach(id =>
   document.getElementById(id).addEventListener("change", reloadDash));
 document.getElementById("clearDatesBtn").addEventListener("click", () => {
