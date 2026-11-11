@@ -115,7 +115,7 @@ button.btn-conclude {
 button:disabled { opacity: .45; cursor: not-allowed; }
 
 .table-wrap { background: var(--bp-white); border: 1px solid var(--border); border-radius: var(--radius); overflow: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1100px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1250px; }
 thead th {
   text-align: left; background: var(--bp-warm-grey); padding: 10px 12px; font-weight: 600;
   border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0;
@@ -164,6 +164,44 @@ tbody tr:hover { background: #fafcf7; }
 .toast.error { background: #b00020; }
 .empty-state { text-align: center; padding: 40px 20px; color: #777; font-size: 14px; }
 .footer-brand { text-align: center; font-size: 11px; color: #9aa89a; padding: 20px 0 10px; }
+
+/* ---------- Tabela no formato das planilhas ---------- */
+tbody tr.clickable { cursor: pointer; }
+tbody tr.clickable:hover { background: #eef6e4; }
+td.c-item { font-weight: 700; color: var(--bp-dark-green); white-space: nowrap; }
+td.c-nowrap { white-space: nowrap; }
+.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.col-desc { min-width: 300px; max-width: 420px; }
+.col-assunto { min-width: 150px; max-width: 220px; }
+.col-fase { min-width: 150px; max-width: 200px; }
+.toolbar .filters label.dt { font-size: 12px; color: #555; display: inline-flex; align-items: center; gap: 5px; }
+.toolbar input[type="date"] { padding: 7px 8px; border: 1px solid var(--border); border-radius: 6px; font-family: var(--bp-font); font-size: 13px; }
+
+/* ---------- Painel lateral de detalhes ---------- */
+.drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 120; justify-content: flex-end; }
+.drawer-overlay.open { display: flex; }
+.drawer { background: var(--bp-white); width: 100%; max-width: 620px; height: 100%; overflow-y: auto; box-shadow: -8px 0 30px rgba(0,0,0,.2); display: flex; flex-direction: column; }
+.drawer-head { background: var(--bp-dark-green); color: var(--bp-white); padding: 18px 22px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; position: sticky; top: 0; z-index: 2; }
+.drawer-head h2 { margin: 0; font-size: 17px; line-height: 1.3; }
+.drawer-head .sub { font-size: 12px; opacity: .85; margin-top: 4px; }
+.drawer-head button.close { background: transparent; border: 1px solid rgba(255,255,255,.5); color: #fff; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 16px; }
+.drawer-body { padding: 20px 22px 30px; flex: 1; }
+.dgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; margin-bottom: 18px; }
+.dgrid .full { grid-column: 1 / -1; }
+.dfield .k { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: #777; margin-bottom: 3px; }
+.dfield .v { font-size: 14px; white-space: pre-wrap; word-break: break-word; }
+.dsection { border-top: 1px solid var(--border); padding-top: 16px; margin-top: 8px; }
+.dsection h3 { margin: 0 0 10px; font-size: 14px; color: var(--bp-dark-green); }
+.evi-box { background: var(--bp-warm-grey); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 13px; }
+.evi-box a { color: var(--bp-dark-green); font-weight: 600; }
+.note { background: var(--bp-warm-grey); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+.note .meta { font-size: 11px; color: #777; margin-bottom: 4px; }
+.note .meta b { color: var(--bp-dark-green); }
+.note .txt { font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+.note-form textarea { width: 100%; min-height: 80px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-family: var(--bp-font); font-size: 14px; resize: vertical; }
+.note-form .row { display: flex; justify-content: flex-end; margin-top: 8px; }
+.drawer-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+@media (max-width: 560px) { .dgrid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -202,7 +240,7 @@ tbody tr:hover { background: #fafcf7; }
       <button data-tab="history" id="historyTabBtn" style="display:none;">Histórico (Admin)</button>
     </div>
 
-    <!-- -------- DASHBOARD TAB -------- -->
+    <!-- -------- PAINEL -------- -->
     <section id="tab-dashboard">
       <div class="cards" id="statusCards"></div>
 
@@ -210,56 +248,52 @@ tbody tr:hover { background: #fafcf7; }
         <div class="filters">
           <input type="text" id="searchInput" placeholder="Buscar por assunto, responsável..." />
           <select id="supplierFilterAdmin" style="display:none;"></select>
+          <select id="statusFilter">
+            <option value="open">Em aberto</option>
+            <option value="all">Todos os status</option>
+            <option value="em_andamento">Em andamento</option>
+            <option value="atrasada">Atrasada</option>
+            <option value="para_informacao">Para informação</option>
+            <option value="concluida">Concluída</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+          <label class="dt">Data da reunião: de <input type="date" id="dateFrom" /></label>
+          <label class="dt">até <input type="date" id="dateTo" /></label>
+          <button class="btn-small" id="clearDatesBtn" type="button">Limpar datas</button>
         </div>
-        <button class="btn-primary" id="addActionBtn">+ Adicionar ação</button>
+        <button class="btn-primary" id="addActionBtn" style="display:none;">+ Adicionar ação</button>
       </div>
 
       <div class="table-wrap">
         <table>
           <thead>
-            <tr>
-              <th id="firstColHeader">Item</th>
-              <th>O quê / Assunto</th>
-              <th>Quem</th>
-              <th>Quando</th>
-              <th>Onde</th>
-              <th>Por quê / Fase</th>
-              <th>Status</th>
-              <th>Evidência</th>
-              <th>Ação</th>
-            </tr>
+            <tr id="mainHeadRow"></tr>
           </thead>
           <tbody id="openActionsBody"></tbody>
         </table>
-        <div class="empty-state" id="openActionsEmpty" style="display:none;">Nenhuma ação em aberto encontrada.</div>
+        <div class="empty-state" id="openActionsEmpty" style="display:none;">Nenhuma ação encontrada para os filtros selecionados.</div>
       </div>
+      <div class="pagination"><span id="rowCountLabel"></span></div>
     </section>
 
-    <!-- -------- HISTORY TAB (admin only) -------- -->
+    <!-- -------- HISTÓRICO (admin) -------- -->
     <section id="tab-history" style="display:none;">
       <div class="toolbar">
         <div class="filters">
           <input type="text" id="histSearch" placeholder="Buscar..." />
           <select id="histStatus">
-            <option value="">Todos os status</option>
+            <option value="">Concluídas e canceladas</option>
             <option value="concluida">Concluída</option>
             <option value="cancelada">Cancelada</option>
           </select>
           <select id="histSupplier"></select>
+          <label class="dt">Data da reunião: de <input type="date" id="histFrom" /></label>
+          <label class="dt">até <input type="date" id="histTo" /></label>
         </div>
       </div>
       <div class="table-wrap">
         <table>
-          <thead>
-            <tr>
-              <th>Fornecedor</th>
-              <th>Assunto</th>
-              <th>Responsável</th>
-              <th>Status</th>
-              <th>Concluída em</th>
-              <th>Evidência</th>
-            </tr>
-          </thead>
+          <thead><tr id="histHeadRow"></tr></thead>
           <tbody id="historyBody"></tbody>
         </table>
         <div class="empty-state" id="historyEmpty" style="display:none;">Nenhum registro encontrado.</div>
@@ -275,11 +309,28 @@ tbody tr:hover { background: #fafcf7; }
   </main>
 </div>
 
-<!-- ======================= MODAL: Adicionar Ação ======================= -->
+<!-- ======================= PAINEL DE DETALHES ======================= -->
+<div class="drawer-overlay" id="drawerOverlay">
+  <aside class="drawer" role="dialog" aria-label="Detalhes da ação">
+    <div class="drawer-head">
+      <div>
+        <h2 id="dTitle">Ação</h2>
+        <div class="sub" id="dSub"></div>
+      </div>
+      <button class="close" id="drawerClose" aria-label="Fechar">✕</button>
+    </div>
+    <div class="drawer-body" id="drawerBody"></div>
+  </aside>
+</div>
+
+<!-- ======================= MODAL: Adicionar Ação (admin) ======================= -->
 <div class="modal-overlay" id="addModalOverlay">
   <div class="modal">
     <h2>Nova ação (5W1H)</h2>
     <form id="addActionForm">
+      <label>Fornecedor <small>— selecione na lista</small></label>
+      <select id="f_supplier" required></select>
+
       <label>O quê <small>— o que precisa ser feito</small></label>
       <textarea id="f_what" required></textarea>
 
@@ -308,7 +359,7 @@ tbody tr:hover { background: #fafcf7; }
 </div>
 
 <!-- ======================= MODAL: Concluir (admin) ======================= -->
-<div class="modal-overlay" id="concludeModalOverlay">
+<div class="modal-overlay" id="concludeModalOverlay" style="z-index:150;">
   <div class="modal">
     <h2>Concluir ação</h2>
     <p id="concludeInfo" style="font-size:14px; color:#444;"></p>
@@ -336,25 +387,61 @@ const API_URL = SUPABASE_URL + "/functions/v1/api";
 /* ============================================================ */
 
 const STATUS_LABELS = {
-  em_andamento: "Em andamento",
-  atrasada: "Atrasada",
-  concluida: "Concluída",
-  cancelada: "Cancelada",
-  para_informacao: "Para informação"
+  em_andamento: "Em andamento", atrasada: "Atrasada", concluida: "Concluída",
+  cancelada: "Cancelada", para_informacao: "Para informação"
 };
-const STATUS_ICON = {
-  em_andamento: "◷",
-  atrasada: "⚠",
-  concluida: "✓",
-  cancelada: "✕",
-  para_informacao: "ℹ"
-};
+const STATUS_ICON = { em_andamento: "◷", atrasada: "⚠", concluida: "✓", cancelada: "✕", para_informacao: "ℹ" };
 
-let session = null; // { token, app_role, supplier_code, razao_social }
+let session = null;
 let allSuppliers = [];
 let histPage = 0;
 const HIST_PAGE_SIZE = 25;
 let storageClient = null;
+let currentRows = {};      // id -> linha (painel)
+let openActionId = null;   // ação aberta no painel lateral
+
+const isAdmin = () => session && session.app_role === "admin";
+
+/* ---------------- UTILIDADES ---------------- */
+function escapeHtml(s) {
+  if (s === null || s === undefined) return "";
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+function clean(v) { // trata " - " e vazios das planilhas
+  if (v === null || v === undefined) return "";
+  const t = String(v).trim();
+  return (t === "-" || t === "") ? "" : t;
+}
+function fmtDate(d) {
+  if (!d) return "—";
+  const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : String(d);
+}
+function dash(v) { const c = clean(v); return c ? escapeHtml(c) : "—"; }
+function fmtPrevisao(r) {
+  const t = clean(r.previsao_texto);
+  if (t) return /^\d{4}-\d{2}-\d{2}/.test(t) ? fmtDate(t) : t;
+  return r.when_quando ? fmtDate(r.when_quando) : "";
+}
+function fmtDateTime(ts) {
+  if (!ts) return "";
+  try { return new Date(ts).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }); } catch (e) { return ts; }
+}
+function supplierName(code) {
+  const s = allSuppliers.find(x => x.supplier_code === code);
+  return s ? s.razao_social : code;
+}
+function showToast(msg, isError) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast" + (isError ? " error" : "");
+  t.style.display = "block";
+  setTimeout(() => { t.style.display = "none"; }, 3500);
+}
+function debounce(fn, wait) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+}
 
 /* ---------------- CHAMADA À API ---------------- */
 async function api(op, params) {
@@ -365,9 +452,7 @@ async function api(op, params) {
       headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY },
       body: JSON.stringify({ op, token: session ? session.token : undefined, ...(params || {}) })
     });
-  } catch (e) {
-    throw new Error("Sem conexão com o servidor.");
-  }
+  } catch (e) { throw new Error("Sem conexão com o servidor."); }
   let data = {};
   try { data = await res.json(); } catch (e) {}
   if (res.status === 401 && session) { logout(); showToast(data.error || "Sessão expirada.", true); throw new Error(data.error || "Sessão expirada."); }
@@ -375,30 +460,20 @@ async function api(op, params) {
   return data;
 }
 
-function showToast(msg, isError) {
-  const t = document.getElementById("toast");
-  t.textContent = msg;
-  t.className = "toast" + (isError ? " error" : "");
-  t.style.display = "block";
-  setTimeout(() => { t.style.display = "none"; }, 3500);
-}
-
-/* ---------------- SESSÃO ---------------- */
+/* ---------------- SESSÃO / LOGIN ---------------- */
 function restoreSession() {
   const raw = sessionStorage.getItem("pa_session");
   if (!raw) return false;
   try { session = JSON.parse(raw); return !!session.token; } catch (e) { return false; }
 }
-
 function logout() {
   sessionStorage.removeItem("pa_session");
   session = null;
+  closeDrawer();
   document.getElementById("app").style.display = "none";
   document.getElementById("loginScreen").style.display = "flex";
   document.getElementById("codeInput").value = "";
 }
-
-/* ---------------- LOGIN ---------------- */
 document.getElementById("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const code = document.getElementById("codeInput").value.trim();
@@ -411,26 +486,55 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     sessionStorage.setItem("pa_session", JSON.stringify(session));
     await enterApp();
   } catch (err) {
-    errEl.textContent = err.message === "Código inválida." || /inválido/i.test(err.message)
-      ? "Código inválido. Verifique e tente novamente." : err.message;
+    errEl.textContent = /inválido/i.test(err.message) ? "Código inválido. Verifique e tente novamente." : err.message;
   }
 });
-
 document.getElementById("logoutBtn").addEventListener("click", logout);
+
+/* ---------------- CABEÇALHOS DA TABELA (formato das planilhas) ---------------- */
+function headerHtml() {
+  const cols = ["ITEM", "UNIDADE", "FASE", "STATUS", "DATA DA REUNIÃO", "ASSUNTO", "DESCRIÇÃO DAS AÇÕES/COMENTÁRIOS", "RESPONSÁVEL", "PREVISÃO", "DATA DE CONCLUSÃO"];
+  if (isAdmin()) cols.unshift("FORNECEDOR");
+  return cols.map(c => `<th>${c}</th>`).join("");
+}
+function rowHtml(r) {
+  const unidade = r.unidade || r.where_onde;
+  const fase = r.fase || r.why_por_que;
+  const assunto = r.assunto || r.what_o_que;
+  const desc = r.descricao || r.how_como;
+  const resp = r.responsavel || r.who_quem;
+  const concl = r.data_conclusao ? fmtDate(r.data_conclusao) : "—";
+  return `
+    <tr class="clickable" data-id="${r.id}">
+      ${isAdmin() ? `<td class="c-nowrap">${escapeHtml(supplierName(r.supplier_code))}</td>` : ""}
+      <td class="c-item">${r.item ?? "—"}</td>
+      <td class="c-nowrap">${dash(unidade)}</td>
+      <td class="col-fase"><div class="clamp">${dash(fase)}</div></td>
+      <td><span class="badge ${r.status}">${STATUS_ICON[r.status]} ${STATUS_LABELS[r.status]}</span></td>
+      <td class="c-nowrap">${fmtDate(r.data_reuniao)}</td>
+      <td class="col-assunto"><div class="clamp">${dash(assunto)}</div></td>
+      <td class="col-desc"><div class="clamp">${dash(desc)}</div></td>
+      <td>${dash(resp)}</td>
+      <td class="c-nowrap">${escapeHtml(fmtPrevisao(r)) || "—"}</td>
+      <td class="c-nowrap">${concl}</td>
+    </tr>`;
+}
 
 /* ---------------- ENTRAR NO APP ---------------- */
 async function enterApp() {
   document.getElementById("loginScreen").style.display = "none";
   document.getElementById("app").style.display = "block";
 
-  const isAdmin = session.app_role === "admin";
-  document.getElementById("roleLabel").textContent = isAdmin ? "Perfil: Administrador" : "Fornecedor: " + (session.razao_social || session.supplier_code);
-  document.getElementById("supplierLabel").textContent = isAdmin ? "Visão consolidada de todos os fornecedores" : "Código: " + session.supplier_code;
-  document.getElementById("historyTabBtn").style.display = isAdmin ? "inline-block" : "none";
-  document.getElementById("supplierFilterAdmin").style.display = isAdmin ? "inline-block" : "none";
-  document.getElementById("firstColHeader").textContent = isAdmin ? "Fornecedor" : "Item";
+  const admin = isAdmin();
+  document.getElementById("roleLabel").textContent = admin ? "Perfil: Administrador" : "Fornecedor: " + (session.razao_social || session.supplier_code);
+  document.getElementById("supplierLabel").textContent = admin ? "Visão consolidada de todos os fornecedores" : "Código: " + session.supplier_code;
+  document.getElementById("historyTabBtn").style.display = admin ? "inline-block" : "none";
+  document.getElementById("supplierFilterAdmin").style.display = admin ? "inline-block" : "none";
+  document.getElementById("addActionBtn").style.display = admin ? "inline-block" : "none"; // somente admin adiciona
+  document.getElementById("mainHeadRow").innerHTML = headerHtml();
+  document.getElementById("histHeadRow").innerHTML = headerHtml();
 
-  if (isAdmin) await loadSuppliersList();
+  if (admin) await loadSuppliersList();
   await loadDashboard();
 }
 
@@ -447,114 +551,196 @@ document.getElementById("tabsBar").addEventListener("click", (e) => {
 
 /* ---------------- FORNECEDORES (admin) ---------------- */
 async function loadSuppliersList() {
-  try {
-    const { data } = await api("suppliers");
-    allSuppliers = data || [];
-  } catch (e) { console.error(e); return; }
-  const sel1 = document.getElementById("supplierFilterAdmin");
-  const sel2 = document.getElementById("histSupplier");
+  try { ({ data: allSuppliers } = await api("suppliers")); allSuppliers = allSuppliers || []; }
+  catch (e) { console.error(e); return; }
   const opts = '<option value="">Todos os fornecedores</option>' +
     allSuppliers.map(s => `<option value="${escapeHtml(s.supplier_code)}">${escapeHtml(s.razao_social)} (${escapeHtml(s.supplier_code)})</option>`).join("");
-  sel1.innerHTML = opts;
-  sel2.innerHTML = opts;
+  document.getElementById("supplierFilterAdmin").innerHTML = opts;
+  document.getElementById("histSupplier").innerHTML = opts;
+  // lista fixa para o cadastro de ação (evita erros de digitação)
+  document.getElementById("f_supplier").innerHTML = '<option value="">Selecione o fornecedor...</option>' +
+    allSuppliers.map(s => `<option value="${escapeHtml(s.supplier_code)}">${escapeHtml(s.razao_social)} (${escapeHtml(s.supplier_code)})</option>`).join("");
 }
 
-/* ---------------- DASHBOARD ---------------- */
-function currentSupplierFilter() {
-  return session.app_role === "admin" ? document.getElementById("supplierFilterAdmin").value : session.supplier_code;
+/* ---------------- PAINEL ---------------- */
+function dashParams() {
+  return {
+    supplier: isAdmin() ? document.getElementById("supplierFilterAdmin").value : session.supplier_code,
+    search: document.getElementById("searchInput").value.trim(),
+    status: document.getElementById("statusFilter").value,
+    date_from: document.getElementById("dateFrom").value || undefined,
+    date_to: document.getElementById("dateTo").value || undefined
+  };
 }
-
 async function loadDashboard() {
-  await Promise.all([loadStatusCards(), loadOpenActions()]);
+  await Promise.all([loadStatusCards(), loadActions()]);
 }
-
 async function loadStatusCards() {
+  const p = dashParams();
   let counts;
-  try { ({ counts } = await api("counts", { supplier: currentSupplierFilter() })); }
+  try { ({ counts } = await api("counts", { supplier: p.supplier, date_from: p.date_from, date_to: p.date_to })); }
   catch (e) { console.error(e); return; }
   document.getElementById("statusCards").innerHTML = Object.keys(STATUS_LABELS).map(st => `
-    <div class="card">
-      <div class="accent"></div>
+    <div class="card"><div class="accent"></div>
       <div class="num">${counts[st] || 0}</div>
       <div class="label">${STATUS_ICON[st]} ${STATUS_LABELS[st]}</div>
-    </div>
-  `).join("");
+    </div>`).join("");
 }
-
-async function loadOpenActions() {
-  const search = document.getElementById("searchInput").value.trim();
+async function loadActions() {
+  const p = dashParams();
   try {
-    const { data } = await api("list_open", { supplier: currentSupplierFilter(), search });
-    renderOpenActions(data || []);
+    const { data } = await api("list_open", p);
+    renderActions(data || []);
   } catch (e) {
     console.error(e);
     showToast("Erro ao carregar ações: " + e.message, true);
   }
 }
-
-function fmtDate(d) {
-  if (!d) return "—";
-  const parts = d.split("-");
-  if (parts.length !== 3) return d;
-  return `${parts[2]}/${parts[1]}/${parts[0]}`;
-}
-
-function escapeHtml(s) {
-  if (s === null || s === undefined) return "";
-  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
-}
-
-function renderOpenActions(rows) {
+function renderActions(rows) {
   const body = document.getElementById("openActionsBody");
   const empty = document.getElementById("openActionsEmpty");
-  const isAdmin = session.app_role === "admin";
-
+  currentRows = {};
+  rows.forEach(r => { currentRows[r.id] = r; });
+  document.getElementById("rowCountLabel").textContent = rows.length ? `${rows.length} ação(ões)` : "";
   if (!rows.length) { body.innerHTML = ""; empty.style.display = "block"; return; }
   empty.style.display = "none";
+  body.innerHTML = rows.map(rowHtml).join("");
+}
+document.getElementById("openActionsBody").addEventListener("click", (e) => {
+  const tr = e.target.closest("tr[data-id]");
+  if (tr) openDrawer(Number(tr.dataset.id));
+});
 
-  body.innerHTML = rows.map(r => {
-    const what = r.what_o_que || r.assunto || "—";
-    const who = r.who_quem || r.responsavel || "—";
-    const when = r.when_quando || r.previsao_texto || r.data_reuniao;
-    const where = r.where_onde || r.unidade || "—";
-    const why = r.why_por_que || r.fase || "—";
+/* ---------------- PAINEL LATERAL: DETALHES DA AÇÃO ---------------- */
+function closeDrawer() {
+  document.getElementById("drawerOverlay").classList.remove("open");
+  openActionId = null;
+}
+document.getElementById("drawerClose").addEventListener("click", closeDrawer);
+document.getElementById("drawerOverlay").addEventListener("click", (e) => { if (e.target.id === "drawerOverlay") closeDrawer(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
 
-    const evidenceCell = r.evidencia_path
-      ? `<a href="#" class="view-evidence" data-path="${escapeHtml(r.evidencia_path)}">Ver arquivo</a><br/><small>${escapeHtml(r.evidencia_nome || "")}</small>`
-      : `<input type="file" class="evidence-input" data-id="${r.id}" />`;
-
-    const actionCell = isAdmin
-      ? `<button class="btn-conclude" data-id="${r.id}" data-subject="${escapeHtml(what)}">Concluir</button>`
-      : "—";
-
-    return `
-      <tr>
-        <td>${isAdmin ? escapeHtml(r.supplier_code) : r.id}</td>
-        <td class="desc-cell">${escapeHtml(what)}</td>
-        <td>${escapeHtml(who)}</td>
-        <td>${typeof when === "string" && /^\d{4}-\d{2}-\d{2}$/.test(when) ? fmtDate(when) : escapeHtml(when || "—")}</td>
-        <td>${escapeHtml(where)}</td>
-        <td class="desc-cell">${escapeHtml(why)}</td>
-        <td><span class="badge ${r.status}">${STATUS_ICON[r.status]} ${STATUS_LABELS[r.status]}</span></td>
-        <td class="evidence-cell">${evidenceCell}</td>
-        <td>${actionCell}</td>
-      </tr>
-    `;
-  }).join("");
-
-  document.querySelectorAll(".evidence-input").forEach(inp => inp.addEventListener("change", onEvidenceUpload));
-  document.querySelectorAll(".view-evidence").forEach(a => a.addEventListener("click", onViewEvidence));
-  document.querySelectorAll(".btn-conclude").forEach(btn => btn.addEventListener("click", onOpenConcludeModal));
+function field(k, v, full) {
+  return `<div class="dfield${full ? " full" : ""}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
 }
 
-/* ---------------- UPLOAD DE EVIDÊNCIA ---------------- */
-async function onEvidenceUpload(e) {
+async function openDrawer(id) {
+  openActionId = id;
+  document.getElementById("drawerOverlay").classList.add("open");
+  document.getElementById("dTitle").textContent = "Carregando...";
+  document.getElementById("dSub").textContent = "";
+  document.getElementById("drawerBody").innerHTML = '<div class="empty-state">Carregando...</div>';
+  try {
+    const res = await api("get_action", { action_id: id });
+    if (openActionId !== id) return;
+    renderDrawer(res);
+  } catch (err) {
+    document.getElementById("drawerBody").innerHTML = `<div class="empty-state">${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function renderDrawer({ action: r, notes, supplier }) {
+  const assunto = r.assunto || r.what_o_que || "Ação";
+  document.getElementById("dTitle").textContent = assunto;
+  document.getElementById("dSub").textContent =
+    (supplier ? supplier.razao_social : r.supplier_code) + (r.item ? " · Item " + r.item : "");
+
+  const unidade = r.unidade || r.where_onde;
+  const fase = r.fase || r.why_por_que;
+  const desc = r.descricao || r.how_como;
+  const resp = r.responsavel || r.who_quem;
+  const previsao = fmtPrevisao(r);
+  const isNative = !r.origem_arquivo; // criada pelo app (5W1H)
+
+  let html = `<div class="dgrid">
+    ${field("Status", `<span class="badge ${r.status}">${STATUS_ICON[r.status]} ${STATUS_LABELS[r.status]}</span>`)}
+    ${field("Data da reunião", fmtDate(r.data_reuniao))}
+    ${field("Unidade", dash(unidade))}
+    ${field("Fase", dash(fase))}
+    ${field("Responsável", dash(resp))}
+    ${field("Previsão", previsao ? escapeHtml(previsao) : "—")}
+    ${field("Data de conclusão", r.data_conclusao ? fmtDate(r.data_conclusao) : "—")}
+    ${isAdmin() && r.origem_arquivo ? field("Origem", escapeHtml(r.origem_arquivo)) : ""}
+    ${field("Assunto", dash(assunto), true)}
+    ${field("Descrição das ações/comentários", dash(desc), true)}
+  </div>`;
+
+  if (isNative) {
+    html += `<div class="dsection"><h3>5W1H</h3><div class="dgrid">
+      ${field("O quê", dash(r.what_o_que))}
+      ${field("Por quê", dash(r.why_por_que))}
+      ${field("Como", dash(r.how_como))}
+      ${field("Quem", dash(r.who_quem))}
+      ${field("Onde", dash(r.where_onde))}
+      ${field("Quando", r.when_quando ? fmtDate(r.when_quando) : "—")}
+    </div></div>`;
+  }
+
+  // Evidência / arquivo anexado
+  const canUpload = !(r.status === "concluida" && !isAdmin());
+  let evi;
+  if (r.evidencia_path) {
+    evi = `<a href="#" id="viewEvi" data-path="${escapeHtml(r.evidencia_path)}">📎 ${escapeHtml(r.evidencia_nome || "Abrir arquivo")}</a>
+           <div style="color:#777;font-size:12px;margin-top:4px;">Enviado em ${escapeHtml(fmtDateTime(r.evidencia_enviada_em))}</div>`;
+  } else {
+    evi = `<div style="color:#777;margin-bottom:8px;">Nenhum arquivo anexado.</div>` +
+          (canUpload ? `<input type="file" id="eviInput" />` : "");
+  }
+  html += `<div class="dsection"><h3>Arquivo anexado (evidência)</h3><div class="evi-box">${evi}</div></div>`;
+
+  // Observações
+  html += `<div class="dsection"><h3>Observações</h3>
+    <div id="notesList">${notes.length ? notes.map(noteHtml).join("") : '<div style="color:#777;font-size:13px;margin-bottom:10px;">Nenhuma observação registrada.</div>'}</div>
+    <div class="note-form">
+      <textarea id="noteInput" placeholder="Escreva uma observação sobre esta ação..." maxlength="4000"></textarea>
+      <div class="row"><button class="btn-primary" id="addNoteBtn" type="button">Salvar observação</button></div>
+    </div></div>`;
+
+  // Ações do admin
+  if (isAdmin() && r.status !== "concluida") {
+    html += `<div class="drawer-actions"><button class="btn-conclude" id="concludeBtn" style="padding:10px 16px;font-size:14px;">Concluir ação</button></div>`;
+  }
+
+  document.getElementById("drawerBody").innerHTML = html;
+
+  const viewEvi = document.getElementById("viewEvi");
+  if (viewEvi) viewEvi.addEventListener("click", onViewEvidence);
+  const eviInput = document.getElementById("eviInput");
+  if (eviInput) eviInput.addEventListener("change", (e) => onEvidenceUpload(e, r.id));
+  document.getElementById("addNoteBtn").addEventListener("click", () => onAddNote(r.id));
+  const cb = document.getElementById("concludeBtn");
+  if (cb) cb.addEventListener("click", () => openConcludeModal(r.id, assunto));
+}
+
+function noteHtml(n) {
+  return `<div class="note"><div class="meta"><b>${escapeHtml(n.author_name || n.author_role)}</b> · ${escapeHtml(fmtDateTime(n.created_at))}</div><div class="txt">${escapeHtml(n.note)}</div></div>`;
+}
+
+async function onAddNote(actionId) {
+  const ta = document.getElementById("noteInput");
+  const note = ta.value.trim();
+  if (!note) { showToast("Escreva a observação antes de salvar.", true); return; }
+  const btn = document.getElementById("addNoteBtn");
+  btn.disabled = true;
+  try {
+    const { note: saved } = await api("add_note", { action_id: actionId, note });
+    const list = document.getElementById("notesList");
+    if (!list.querySelector(".note")) list.innerHTML = "";
+    list.insertAdjacentHTML("beforeend", noteHtml(saved));
+    ta.value = "";
+    showToast("Observação salva.");
+  } catch (err) {
+    showToast("Erro ao salvar observação: " + err.message, true);
+  }
+  btn.disabled = false;
+}
+
+/* ---------------- EVIDÊNCIA ---------------- */
+async function onEvidenceUpload(e, actionId) {
   const input = e.target;
   const file = input.files[0];
   if (!file) return;
   if (file.size > 20 * 1024 * 1024) { showToast("Arquivo acima de 20 MB.", true); input.value = ""; return; }
-  const actionId = Number(input.dataset.id);
-
   try {
     showToast("Enviando evidência...");
     const { path, token } = await api("evidence_upload_url", { action_id: actionId, filename: file.name });
@@ -563,16 +749,16 @@ async function onEvidenceUpload(e) {
     if (upErr) throw new Error(upErr.message);
     await api("evidence_register", { action_id: actionId, path, nome: file.name });
     showToast("Evidência enviada com sucesso.");
-    await loadOpenActions();
+    await openDrawer(actionId);
+    loadActions();
   } catch (err) {
     showToast("Erro ao enviar evidência: " + err.message, true);
     input.value = "";
   }
 }
-
 async function onViewEvidence(e) {
   e.preventDefault();
-  const path = e.target.dataset.path;
+  const path = e.currentTarget.dataset.path;
   try {
     const { url } = await api("evidence_url", { path });
     window.open(url, "_blank");
@@ -581,9 +767,9 @@ async function onViewEvidence(e) {
 
 /* ---------------- CONCLUIR AÇÃO (admin) ---------------- */
 let actionIdToConclude = null;
-function onOpenConcludeModal(e) {
-  actionIdToConclude = Number(e.target.dataset.id);
-  document.getElementById("concludeInfo").textContent = "Ação: " + e.target.dataset.subject;
+function openConcludeModal(id, subject) {
+  actionIdToConclude = id;
+  document.getElementById("concludeInfo").textContent = "Ação: " + subject;
   document.getElementById("concludeError").textContent = "";
   document.getElementById("concludeModalOverlay").classList.add("open");
 }
@@ -591,21 +777,21 @@ document.getElementById("cancelConcludeBtn").addEventListener("click", () => {
   document.getElementById("concludeModalOverlay").classList.remove("open");
 });
 document.getElementById("confirmConcludeBtn").addEventListener("click", async () => {
-  try {
-    await api("conclude", { action_id: actionIdToConclude });
-  } catch (err) {
-    document.getElementById("concludeError").textContent = "Erro ao concluir: " + err.message;
-    return;
-  }
+  try { await api("conclude", { action_id: actionIdToConclude }); }
+  catch (err) { document.getElementById("concludeError").textContent = "Erro ao concluir: " + err.message; return; }
   document.getElementById("concludeModalOverlay").classList.remove("open");
   showToast("Ação concluída com sucesso.");
+  await openDrawer(actionIdToConclude);
   await loadDashboard();
 });
 
-/* ---------------- ADICIONAR AÇÃO (salva no Supabase) ---------------- */
+/* ---------------- ADICIONAR AÇÃO (somente admin) ---------------- */
 document.getElementById("addActionBtn").addEventListener("click", () => {
+  if (!isAdmin()) return;
   document.getElementById("addActionForm").reset();
   document.getElementById("addActionError").textContent = "";
+  const current = document.getElementById("supplierFilterAdmin").value;
+  if (current) document.getElementById("f_supplier").value = current;
   document.getElementById("addModalOverlay").classList.add("open");
 });
 document.getElementById("cancelAddBtn").addEventListener("click", () => {
@@ -613,14 +799,9 @@ document.getElementById("cancelAddBtn").addEventListener("click", () => {
 });
 document.getElementById("addActionForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const isAdmin = session.app_role === "admin";
-  const targetSupplier = isAdmin ? document.getElementById("supplierFilterAdmin").value : session.supplier_code;
-
-  if (isAdmin && !targetSupplier) {
-    document.getElementById("addActionError").textContent = "Selecione um fornecedor no filtro do painel antes de criar a ação.";
-    return;
-  }
-
+  if (!isAdmin()) return;
+  const supplier = document.getElementById("f_supplier").value;
+  if (!supplier) { document.getElementById("addActionError").textContent = "Selecione o fornecedor."; return; }
   const fields = {
     what: document.getElementById("f_what").value.trim(),
     why: document.getElementById("f_why").value.trim(),
@@ -629,12 +810,10 @@ document.getElementById("addActionForm").addEventListener("submit", async (e) =>
     where: document.getElementById("f_where").value.trim(),
     when: document.getElementById("f_when").value
   };
-
   const btn = e.target.querySelector('button[type="submit"]');
   btn.disabled = true;
-  try {
-    await api("create_action", { supplier: targetSupplier, fields });
-  } catch (err) {
+  try { await api("create_action", { supplier, fields }); }
+  catch (err) {
     document.getElementById("addActionError").textContent = "Erro ao salvar: " + err.message;
     btn.disabled = false;
     return;
@@ -645,60 +824,49 @@ document.getElementById("addActionForm").addEventListener("submit", async (e) =>
   await loadDashboard();
 });
 
-/* ---------------- FILTROS ---------------- */
-document.getElementById("searchInput").addEventListener("input", debounce(loadOpenActions, 400));
-document.getElementById("supplierFilterAdmin").addEventListener("change", loadDashboard);
-
-function debounce(fn, wait) {
-  let t;
-  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
-}
+/* ---------------- FILTROS DO PAINEL ---------------- */
+const reloadDash = debounce(loadDashboard, 300);
+document.getElementById("searchInput").addEventListener("input", debounce(loadActions, 400));
+["supplierFilterAdmin", "statusFilter", "dateFrom", "dateTo"].forEach(id =>
+  document.getElementById(id).addEventListener("change", reloadDash));
+document.getElementById("clearDatesBtn").addEventListener("click", () => {
+  document.getElementById("dateFrom").value = "";
+  document.getElementById("dateTo").value = "";
+  loadDashboard();
+});
 
 /* ---------------- HISTÓRICO (admin) ---------------- */
 async function loadHistory() {
-  const search = document.getElementById("histSearch").value.trim();
-  const status = document.getElementById("histStatus").value;
-  const supplier = document.getElementById("histSupplier").value;
-
+  const params = {
+    search: document.getElementById("histSearch").value.trim(),
+    status: document.getElementById("histStatus").value,
+    supplier: document.getElementById("histSupplier").value,
+    date_from: document.getElementById("histFrom").value || undefined,
+    date_to: document.getElementById("histTo").value || undefined,
+    page: histPage
+  };
   let res;
-  try { res = await api("list_history", { search, status, supplier, page: histPage }); }
+  try { res = await api("list_history", params); }
   catch (e) { console.error(e); showToast("Erro ao carregar histórico.", true); return; }
 
-  renderHistory(res.data || []);
+  const rows = res.data || [];
+  const body = document.getElementById("historyBody");
+  const empty = document.getElementById("historyEmpty");
+  rows.forEach(r => { currentRows[r.id] = r; });
+  if (!rows.length) { body.innerHTML = ""; empty.style.display = "block"; }
+  else { empty.style.display = "none"; body.innerHTML = rows.map(rowHtml).join(""); }
+
   document.getElementById("histPageLabel").textContent = `Página ${histPage + 1}`;
   document.getElementById("histPrev").disabled = histPage === 0;
   document.getElementById("histNext").disabled = !res.count || (histPage + 1) * HIST_PAGE_SIZE >= res.count;
 }
-
-function renderHistory(rows) {
-  const body = document.getElementById("historyBody");
-  const empty = document.getElementById("historyEmpty");
-  if (!rows.length) { body.innerHTML = ""; empty.style.display = "block"; return; }
-  empty.style.display = "none";
-
-  body.innerHTML = rows.map(r => {
-    const sup = allSuppliers.find(s => s.supplier_code === r.supplier_code);
-    const evidenceCell = r.evidencia_path
-      ? `<a href="#" class="view-evidence-h" data-path="${escapeHtml(r.evidencia_path)}">Ver arquivo</a>`
-      : "—";
-    return `
-      <tr>
-        <td>${escapeHtml(sup ? sup.razao_social : r.supplier_code)}</td>
-        <td class="desc-cell">${escapeHtml(r.what_o_que || r.assunto)}</td>
-        <td>${escapeHtml(r.who_quem || r.responsavel || "—")}</td>
-        <td><span class="badge ${r.status}">${STATUS_ICON[r.status]} ${STATUS_LABELS[r.status]}</span></td>
-        <td>${r.concluida_em ? new Date(r.concluida_em).toLocaleDateString("pt-BR") : "—"}</td>
-        <td class="evidence-cell">${evidenceCell}</td>
-      </tr>
-    `;
-  }).join("");
-
-  document.querySelectorAll(".view-evidence-h").forEach(a => a.addEventListener("click", onViewEvidence));
-}
-
-document.getElementById("histSearch").addEventListener("input", debounce(() => { histPage = 0; loadHistory(); }, 400));
-document.getElementById("histStatus").addEventListener("change", () => { histPage = 0; loadHistory(); });
-document.getElementById("histSupplier").addEventListener("change", () => { histPage = 0; loadHistory(); });
+document.getElementById("historyBody").addEventListener("click", (e) => {
+  const tr = e.target.closest("tr[data-id]");
+  if (tr) openDrawer(Number(tr.dataset.id));
+});
+const reloadHist = () => { histPage = 0; loadHistory(); };
+document.getElementById("histSearch").addEventListener("input", debounce(reloadHist, 400));
+["histStatus", "histSupplier", "histFrom", "histTo"].forEach(id => document.getElementById(id).addEventListener("change", reloadHist));
 document.getElementById("histPrev").addEventListener("click", () => { if (histPage > 0) { histPage--; loadHistory(); } });
 document.getElementById("histNext").addEventListener("click", () => { histPage++; loadHistory(); });
 
