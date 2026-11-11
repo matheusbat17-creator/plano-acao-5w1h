@@ -115,7 +115,7 @@ button.btn-conclude {
 button:disabled { opacity: .45; cursor: not-allowed; }
 
 .table-wrap { background: var(--bp-white); border: 1px solid var(--border); border-radius: var(--radius); overflow: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1250px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1100px; }
 thead th {
   text-align: left; background: var(--bp-warm-grey); padding: 10px 12px; font-weight: 600;
   border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0;
@@ -165,15 +165,12 @@ tbody tr:hover { background: #fafcf7; }
 .empty-state { text-align: center; padding: 40px 20px; color: #777; font-size: 14px; }
 .footer-brand { text-align: center; font-size: 11px; color: #9aa89a; padding: 20px 0 10px; }
 
-/* ---------- Tabela no formato das planilhas ---------- */
+/* ---------- Linhas clicáveis (abrem o detalhe) ---------- */
 tbody tr.clickable { cursor: pointer; }
 tbody tr.clickable:hover { background: #eef6e4; }
-td.c-item { font-weight: 700; color: var(--bp-dark-green); white-space: nowrap; }
-td.c-nowrap { white-space: nowrap; }
-.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.col-desc { min-width: 300px; max-width: 420px; }
-.col-assunto { min-width: 150px; max-width: 220px; }
-.col-fase { min-width: 150px; max-width: 200px; }
+.desc-cell { max-width: 280px; }
+.evidence-cell a { font-size: 12px; color: var(--bp-dark-green); text-decoration: none; }
+.evidence-cell input[type=file] { font-size: 11px; max-width: 150px; }
 .toolbar .filters label.dt { font-size: 12px; color: #555; display: inline-flex; align-items: center; gap: 5px; }
 .toolbar input[type="date"] { padding: 7px 8px; border: 1px solid var(--border); border-radius: 6px; font-family: var(--bp-font); font-size: 13px; }
 
@@ -491,33 +488,67 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
 });
 document.getElementById("logoutBtn").addEventListener("click", logout);
 
-/* ---------------- CABEÇALHOS DA TABELA (formato das planilhas) ---------------- */
+/* ---------------- TABELA DO PAINEL (layout original) ---------------- */
 function headerHtml() {
-  const cols = ["ITEM", "UNIDADE", "FASE", "STATUS", "DATA DA REUNIÃO", "ASSUNTO", "DESCRIÇÃO DAS AÇÕES/COMENTÁRIOS", "RESPONSÁVEL", "PREVISÃO", "DATA DE CONCLUSÃO"];
-  if (isAdmin()) cols.unshift("FORNECEDOR");
-  return cols.map(c => `<th>${c}</th>`).join("");
+  return ["", "O quê / Assunto", "Quem", "Quando", "Onde", "Por quê / Fase", "Status", "Evidência", "Ação"]
+    .map((c, i) => `<th>${i === 0 ? (isAdmin() ? "Fornecedor" : "Item") : c}</th>`).join("");
+}
+function histHeaderHtml() {
+  return ["Fornecedor", "Assunto", "Responsável", "Status", "Concluída em", "Evidência"].map(c => `<th>${c}</th>`).join("");
+}
+function evidenceCellHtml(r, allowUpload) {
+  if (r.evidencia_path) {
+    return `<a href="#" class="view-evidence" data-path="${escapeHtml(r.evidencia_path)}">Ver arquivo</a><br/><small>${escapeHtml(r.evidencia_nome || "")}</small>`;
+  }
+  return allowUpload ? `<input type="file" class="evidence-input" data-id="${r.id}" />` : "—";
 }
 function rowHtml(r) {
-  const unidade = r.unidade || r.where_onde;
-  const fase = r.fase || r.why_por_que;
-  const assunto = r.assunto || r.what_o_que;
-  const desc = r.descricao || r.how_como;
-  const resp = r.responsavel || r.who_quem;
-  const concl = r.data_conclusao ? fmtDate(r.data_conclusao) : "—";
+  const what = r.what_o_que || r.assunto || "—";
+  const who = r.who_quem || r.responsavel || "—";
+  const when = r.when_quando || r.previsao_texto || r.data_reuniao;
+  const where = r.where_onde || r.unidade || "—";
+  const why = r.why_por_que || r.fase || "—";
+  const actionCell = isAdmin()
+    ? `<button class="btn-conclude" data-id="${r.id}" data-subject="${escapeHtml(what)}">Concluir</button>`
+    : "—";
   return `
     <tr class="clickable" data-id="${r.id}">
-      ${isAdmin() ? `<td class="c-nowrap">${escapeHtml(supplierName(r.supplier_code))}</td>` : ""}
-      <td class="c-item">${r.item ?? "—"}</td>
-      <td class="c-nowrap">${dash(unidade)}</td>
-      <td class="col-fase"><div class="clamp">${dash(fase)}</div></td>
+      <td>${isAdmin() ? escapeHtml(supplierName(r.supplier_code)) : (r.item ?? r.id)}</td>
+      <td class="desc-cell">${escapeHtml(what)}</td>
+      <td>${escapeHtml(who)}</td>
+      <td>${typeof when === "string" && /^\d{4}-\d{2}-\d{2}/.test(when) ? fmtDate(when) : escapeHtml(clean(when) || "—")}</td>
+      <td>${escapeHtml(where)}</td>
+      <td class="desc-cell">${escapeHtml(why)}</td>
       <td><span class="badge ${r.status}">${STATUS_ICON[r.status]} ${STATUS_LABELS[r.status]}</span></td>
-      <td class="c-nowrap">${fmtDate(r.data_reuniao)}</td>
-      <td class="col-assunto"><div class="clamp">${dash(assunto)}</div></td>
-      <td class="col-desc"><div class="clamp">${dash(desc)}</div></td>
-      <td>${dash(resp)}</td>
-      <td class="c-nowrap">${escapeHtml(fmtPrevisao(r)) || "—"}</td>
-      <td class="c-nowrap">${concl}</td>
+      <td class="evidence-cell">${evidenceCellHtml(r, !(r.status === "concluida" && !isAdmin()))}</td>
+      <td>${actionCell}</td>
     </tr>`;
+}
+function historyRowHtml(r) {
+  return `
+    <tr class="clickable" data-id="${r.id}">
+      <td>${escapeHtml(supplierName(r.supplier_code))}</td>
+      <td class="desc-cell">${escapeHtml(r.what_o_que || r.assunto)}</td>
+      <td>${escapeHtml(r.who_quem || r.responsavel || "—")}</td>
+      <td><span class="badge ${r.status}">${STATUS_ICON[r.status]} ${STATUS_LABELS[r.status]}</span></td>
+      <td>${r.concluida_em ? new Date(r.concluida_em).toLocaleDateString("pt-BR") : "—"}</td>
+      <td class="evidence-cell">${r.evidencia_path ? evidenceCellHtml(r, false) : "—"}</td>
+    </tr>`;
+}
+
+/* cliques dentro da tabela: botões/links/campos agem sozinhos; o resto abre o detalhe */
+function tableClick(e) {
+  const evi = e.target.closest(".view-evidence");
+  if (evi) { onViewEvidence(e); return; }
+  const cb = e.target.closest(".btn-conclude");
+  if (cb) { openConcludeModal(Number(cb.dataset.id), cb.dataset.subject); return; }
+  if (e.target.closest("input, button, a")) return;
+  const tr = e.target.closest("tr[data-id]");
+  if (tr) openDrawer(Number(tr.dataset.id));
+}
+function tableChange(e) {
+  const inp = e.target.closest(".evidence-input");
+  if (inp) onEvidenceUpload(e, Number(inp.dataset.id), true);
 }
 
 /* ---------------- ENTRAR NO APP ---------------- */
@@ -532,7 +563,7 @@ async function enterApp() {
   document.getElementById("supplierFilterAdmin").style.display = admin ? "inline-block" : "none";
   document.getElementById("addActionBtn").style.display = admin ? "inline-block" : "none"; // somente admin adiciona
   document.getElementById("mainHeadRow").innerHTML = headerHtml();
-  document.getElementById("histHeadRow").innerHTML = headerHtml();
+  document.getElementById("histHeadRow").innerHTML = histHeaderHtml();
 
   if (admin) await loadSuppliersList();
   await loadDashboard();
@@ -606,10 +637,8 @@ function renderActions(rows) {
   empty.style.display = "none";
   body.innerHTML = rows.map(rowHtml).join("");
 }
-document.getElementById("openActionsBody").addEventListener("click", (e) => {
-  const tr = e.target.closest("tr[data-id]");
-  if (tr) openDrawer(Number(tr.dataset.id));
-});
+document.getElementById("openActionsBody").addEventListener("click", tableClick);
+document.getElementById("openActionsBody").addEventListener("change", tableChange);
 
 /* ---------------- PAINEL LATERAL: DETALHES DA AÇÃO ---------------- */
 function closeDrawer() {
@@ -736,7 +765,7 @@ async function onAddNote(actionId) {
 }
 
 /* ---------------- EVIDÊNCIA ---------------- */
-async function onEvidenceUpload(e, actionId) {
+async function onEvidenceUpload(e, actionId, fromRow) {
   const input = e.target;
   const file = input.files[0];
   if (!file) return;
@@ -749,7 +778,7 @@ async function onEvidenceUpload(e, actionId) {
     if (upErr) throw new Error(upErr.message);
     await api("evidence_register", { action_id: actionId, path, nome: file.name });
     showToast("Evidência enviada com sucesso.");
-    await openDrawer(actionId);
+    if (!fromRow) await openDrawer(actionId);
     loadActions();
   } catch (err) {
     showToast("Erro ao enviar evidência: " + err.message, true);
@@ -758,7 +787,7 @@ async function onEvidenceUpload(e, actionId) {
 }
 async function onViewEvidence(e) {
   e.preventDefault();
-  const path = e.currentTarget.dataset.path;
+  const path = (e.target.closest("[data-path]") || e.currentTarget).dataset.path;
   try {
     const { url } = await api("evidence_url", { path });
     window.open(url, "_blank");
@@ -781,8 +810,9 @@ document.getElementById("confirmConcludeBtn").addEventListener("click", async ()
   catch (err) { document.getElementById("concludeError").textContent = "Erro ao concluir: " + err.message; return; }
   document.getElementById("concludeModalOverlay").classList.remove("open");
   showToast("Ação concluída com sucesso.");
-  await openDrawer(actionIdToConclude);
+  if (openActionId === actionIdToConclude) await openDrawer(actionIdToConclude);
   await loadDashboard();
+  if (document.getElementById("tab-history").style.display !== "none") loadHistory();
 });
 
 /* ---------------- ADICIONAR AÇÃO (somente admin) ---------------- */
@@ -854,16 +884,13 @@ async function loadHistory() {
   const empty = document.getElementById("historyEmpty");
   rows.forEach(r => { currentRows[r.id] = r; });
   if (!rows.length) { body.innerHTML = ""; empty.style.display = "block"; }
-  else { empty.style.display = "none"; body.innerHTML = rows.map(rowHtml).join(""); }
+  else { empty.style.display = "none"; body.innerHTML = rows.map(historyRowHtml).join(""); }
 
   document.getElementById("histPageLabel").textContent = `Página ${histPage + 1}`;
   document.getElementById("histPrev").disabled = histPage === 0;
   document.getElementById("histNext").disabled = !res.count || (histPage + 1) * HIST_PAGE_SIZE >= res.count;
 }
-document.getElementById("historyBody").addEventListener("click", (e) => {
-  const tr = e.target.closest("tr[data-id]");
-  if (tr) openDrawer(Number(tr.dataset.id));
-});
+document.getElementById("historyBody").addEventListener("click", tableClick);
 const reloadHist = () => { histPage = 0; loadHistory(); };
 document.getElementById("histSearch").addEventListener("input", debounce(reloadHist, 400));
 ["histStatus", "histSupplier", "histFrom", "histTo"].forEach(id => document.getElementById(id).addEventListener("change", reloadHist));
