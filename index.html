@@ -254,6 +254,7 @@ tbody tr.clickable:hover { background: #eef6e4; }
         <div class="filters">
           <input type="text" id="searchInput" placeholder="Buscar por assunto, responsável..." />
           <select id="supplierFilterAdmin" style="display:none;"></select>
+          <select id="unitFilter"></select>
           <select id="statusFilter">
             <option value="open">Em aberto</option>
             <option value="all">Todos os status</option>
@@ -359,8 +360,8 @@ tbody tr.clickable:hover { background: #eef6e4; }
       <label>Quem <small>— responsável pela ação</small></label>
       <input type="text" id="f_who" required />
 
-      <label>Onde <small>— unidade / local</small></label>
-      <input type="text" id="f_where" />
+      <label>Onde <small>— unidade</small></label>
+      <select id="f_where" required></select>
 
       <label>Quando <small>— prazo previsto</small></label>
       <input type="date" id="f_when" required />
@@ -619,6 +620,13 @@ document.getElementById("tabsBar").addEventListener("click", (e) => {
   if (tab === "history") loadHistory();
 });
 
+/* ---------------- UNIDADES (lista fixa) ---------------- */
+const UNIDADES = ["CLUSTER SUL","CORP","CORP CENTRO","FRU","GUA","GUARIROBA","ITA","ITB","ITT","MOE","MVE","OUR","PAF","SJU","SUL","TRP"];
+document.getElementById("unitFilter").innerHTML = '<option value="">Todas as unidades</option>' +
+  UNIDADES.map(u => `<option value="${u}">${u}</option>`).join("");
+document.getElementById("f_where").innerHTML = '<option value="">Selecione a unidade...</option>' +
+  UNIDADES.map(u => `<option value="${u}">${u}</option>`).join("");
+
 /* ---------------- FORNECEDORES (admin) ---------------- */
 async function loadSuppliersList() {
   try { ({ data: allSuppliers } = await api("suppliers")); allSuppliers = allSuppliers || []; }
@@ -662,6 +670,8 @@ async function loadActions(keepPage) {
     const { data } = await api("list_open", p);
     let rows = data || [];
     if (group === "acoes") rows = rows.filter(r => r.status !== "para_informacao"); // só as executáveis
+    const unit = document.getElementById("unitFilter").value;
+    if (unit) rows = rows.filter(r => String(r.unidade || r.where_onde || "").trim().toUpperCase() === unit);
     allRows = rows;
     if (keepPage !== true) page = 0;
     renderActions();
@@ -948,6 +958,7 @@ const reloadDash = debounce(() => loadDashboard(), 300);
 document.getElementById("searchInput").addEventListener("input", debounce(() => loadActions(), 400));
 ["supplierFilterAdmin", "statusFilter", "dateFrom", "dateTo"].forEach(id =>
   document.getElementById(id).addEventListener("change", reloadDash));
+document.getElementById("unitFilter").addEventListener("change", () => loadActions());
 document.getElementById("clearDatesBtn").addEventListener("click", () => {
   document.getElementById("dateFrom").value = "";
   document.getElementById("dateTo").value = "";
