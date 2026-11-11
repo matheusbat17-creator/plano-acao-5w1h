@@ -40,6 +40,15 @@ const HAS_CONTENT = "assunto.not.is.null,what_o_que.not.is.null,descricao.not.is
 
 const esc = (s: string) => s.replace(/[%,()*\\]/g, " ");
 
+const isoDate = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+// deno-lint-ignore no-explicit-any
+function applyDates(q: any, body: any) {
+  const from = isoDate(body.date_from), to = isoDate(body.date_to);
+  if (from) q = q.gte("data_reuniao", from);
+  if (to) q = q.lte("data_reuniao", to);
+  return q;
+}
+
 function scopeSupplier(s: { role: string; sc: string | null }, requested?: string) {
   if (s.role === "admin") return requested || null;
   return s.sc;
@@ -84,6 +93,7 @@ async function handle(req: Request) {
       const sc = scopeSupplier(s, body.supplier);
       let q = db.from("actions").select("status").or(HAS_CONTENT);
       if (sc) q = q.eq("supplier_code", sc);
+      q = applyDates(q, body);
       const { data, error } = await q.limit(10000);
       if (error) throw new HttpError(500, error.message);
       const counts: Record<string, number> = { em_andamento: 0, atrasada: 0, concluida: 0, cancelada: 0, para_informacao: 0 };
@@ -92,9 +102,15 @@ async function handle(req: Request) {
     }
 
     case "list_open": {
+      // status: "open" (padrão) | "all" | um status específico
       const sc = scopeSupplier(s, body.supplier);
-      let q = db.from("actions").select("*").in("status", OPEN).or(HAS_CONTENT).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(2000);
+      const st = String(body.status ?? "open");
+      let q = db.from("actions").select("*").or(HAS_CONTENT)
+        .order("supplier_code", { ascending: true }).order("item", { ascending: true, nullsFirst: false }).order("id", { ascending: true }).limit(3000);
+      if (st === "open") q = q.in("status", OPEN);
+      else if (st !== "all") q = q.eq("status", st);
       if (sc) q = q.eq("supplier_code", sc);
+      q = applyDates(q, body);
       const search = esc(String(body.search ?? "").trim());
       if (search) q = q.or(`assunto.ilike.%${search}%,responsavel.ilike.%${search}%,descricao.ilike.%${search}%,what_o_que.ilike.%${search}%`);
       const { data, error } = await q;
@@ -110,6 +126,7 @@ async function handle(req: Request) {
         .order("concluida_em", { ascending: false, nullsFirst: false }).order("id", { ascending: false })
         .range(page * size, page * size + size - 1);
       if (body.supplier) q = q.eq("supplier_code", body.supplier);
+      q = applyDates(q, body);
       const search = esc(String(body.search ?? "").trim());
       if (search) q = q.or(`assunto.ilike.%${search}%,responsavel.ilike.%${search}%,what_o_que.ilike.%${search}%`);
       const { data, error, count } = await q;
@@ -117,19 +134,47 @@ async function handle(req: Request) {
       return { data, count };
     }
 
+    case "get_action": {
+      const a = await getOwnedAction(s, Number(body.action_id));
+      const { data: notes } = await db.from("action_notes").select("id, author_role, author_name, note, created_at").eq("action_id", a.id).order("created_at", { ascending: true });
+      const { data: sp } = await db.from("suppliers").select("razao_social, analista").eq("supplier_code", a.supplier_code).maybeSingle();
+      return { action: a, notes: notes ?? [], supplier: sp };
+    }
+
+    case "add_note": {
+      const a = await getOwnedAction(s, Number(body.action_id));
+      const note = String(body.note ?? "").trim();
+      if (!note) throw new HttpError(400, "Escreva a observação.");
+      if (note.length > 4000) throw new HttpError(400, "Observação muito longa (máx. 4000 caracteres).");
+      let name = "Analista";
+      if (s.role !== "admin") {
+        const { data: sp } = await db.from("suppliers").select("razao_social").eq("supplier_code", a.supplier_code).maybeSingle();
+        name = sp?.razao_social ?? a.supplier_code;
+      }
+      const { data, error } = await db.from("action_notes").insert({ action_id: a.id, author_role: s.role, author_name: name, note }).select().single();
+      if (error) throw new HttpError(500, error.message);
+      return { note: data };
+    }
+
     case "create_action": {
+      if (s.role !== "admin") throw new HttpError(403, "Somente o analista (admin) pode adicionar ações.");
       const f = body.fields ?? {};
-      const sc = s.role === "admin" ? body.supplier : s.sc;
-      if (!sc) throw new HttpError(400, "Fornecedor não informado.");
+      const sc = String(body.supplier ?? "").trim();
+      if (!sc) throw new HttpError(400, "Selecione o fornecedor.");
+      const { data: sp } = await db.from("suppliers").select("supplier_code").eq("supplier_code", sc).maybeSingle();
+      if (!sp) throw new HttpError(400, "Fornecedor inválido.");
       const what = String(f.what ?? "").trim(), why = String(f.why ?? "").trim(), who = String(f.who ?? "").trim();
       const when = String(f.when ?? "").trim();
       if (!what || !why || !who || !/^\d{4}-\d{2}-\d{2}$/.test(when)) throw new HttpError(400, "Preencha O quê, Por quê, Quem e Quando.");
       const how = String(f.how ?? "").trim(), where = String(f.where ?? "").trim();
+      const { data: last } = await db.from("actions").select("item").eq("supplier_code", sc).not("item", "is", null).order("item", { ascending: false }).limit(1);
+      const item = ((last && last[0] && last[0].item) || 0) + 1;
+      const today = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10); // horário de Brasília
       const { data, error } = await db.from("actions").insert({
-        supplier_code: sc, origem_arquivo: null, status: "em_andamento",
+        supplier_code: sc, item, origem_arquivo: null, status: "em_andamento", data_reuniao: today,
         what_o_que: what, why_por_que: why, how_como: how, who_quem: who, where_onde: where, when_quando: when,
         assunto: what, descricao: how, responsavel: who, unidade: where, fase: why,
-        created_by_code: s.sc || "admin",
+        created_by_code: "admin",
       }).select().single();
       if (error) throw new HttpError(400, error.message);
       return { data };
