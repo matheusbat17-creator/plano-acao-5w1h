@@ -374,6 +374,20 @@ tbody tr.clickable:hover { background: #eef6e4; }
   </div>
 </div>
 
+<!-- ======================= MODAL: Cancelar ação (admin) ======================= -->
+<div class="modal-overlay" id="cancelModalOverlay" style="z-index:150;">
+  <div class="modal">
+    <h2>Cancelar ação</h2>
+    <p id="cancelInfo" style="font-size:14px; color:#444;"></p>
+    <p style="font-size:13px; color:#b00020;">Tem certeza que deseja cancelar esta ação? Ela deixará de aparecer entre as ações abertas.</p>
+    <div class="error" id="cancelError"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="keepActionBtn">Voltar</button>
+      <button type="button" class="btn-primary" id="confirmCancelBtn" style="background:#b00020;">Sim, cancelar ação</button>
+    </div>
+  </div>
+</div>
+
 <!-- ======================= MODAL: Concluir (admin) ======================= -->
 <div class="modal-overlay" id="concludeModalOverlay" style="z-index:150;">
   <div class="modal">
@@ -780,7 +794,7 @@ function renderDrawer({ action: r, notes, supplier }) {
 
   // Ações do admin
   if (isAdmin() && r.status !== "concluida" && r.status !== "para_informacao") {
-    html += `<div class="drawer-actions"><button class="btn-conclude" id="concludeBtn" style="padding:10px 16px;font-size:14px;">Concluir ação</button></div>`;
+    html += `<div class="drawer-actions"><button class="btn-conclude" id="concludeBtn" style="padding:10px 16px;font-size:14px;">Concluir ação</button><button class="btn-secondary" id="cancelActionBtn" style="padding:10px 16px;font-size:14px;color:#b00020;border-color:#b00020;">Cancelar ação</button></div>`;
   }
 
   document.getElementById("drawerBody").innerHTML = html;
@@ -792,6 +806,8 @@ function renderDrawer({ action: r, notes, supplier }) {
   document.getElementById("addNoteBtn").addEventListener("click", () => onAddNote(r.id));
   const cb = document.getElementById("concludeBtn");
   if (cb) cb.addEventListener("click", () => openConcludeModal(r.id, assunto));
+  const xb = document.getElementById("cancelActionBtn");
+  if (xb) xb.addEventListener("click", () => openCancelModal(r.id, assunto));
 }
 
 function noteHtml(n) {
@@ -864,6 +880,26 @@ document.getElementById("confirmConcludeBtn").addEventListener("click", async ()
   document.getElementById("concludeModalOverlay").classList.remove("open");
   showToast("Ação concluída com sucesso.");
   if (openActionId === actionIdToConclude) await openDrawer(actionIdToConclude);
+  await loadDashboard(true);
+  if (document.getElementById("tab-history").style.display !== "none") loadHistory();
+});
+
+let actionIdToCancel = null;
+function openCancelModal(id, subject) {
+  actionIdToCancel = id;
+  document.getElementById("cancelInfo").textContent = "Ação: " + subject;
+  document.getElementById("cancelError").textContent = "";
+  document.getElementById("cancelModalOverlay").classList.add("open");
+}
+document.getElementById("keepActionBtn").addEventListener("click", () => {
+  document.getElementById("cancelModalOverlay").classList.remove("open");
+});
+document.getElementById("confirmCancelBtn").addEventListener("click", async () => {
+  try { await api("cancel", { action_id: actionIdToCancel }); }
+  catch (err) { document.getElementById("cancelError").textContent = "Erro ao cancelar: " + err.message; return; }
+  document.getElementById("cancelModalOverlay").classList.remove("open");
+  showToast("Ação cancelada.");
+  if (openActionId === actionIdToCancel) await openDrawer(actionIdToCancel);
   await loadDashboard(true);
   if (document.getElementById("tab-history").style.display !== "none") loadHistory();
 });
