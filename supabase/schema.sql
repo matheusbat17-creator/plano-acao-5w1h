@@ -46,3 +46,18 @@ alter table public.access_codes enable row level security;
 revoke all on public.suppliers, public.actions, public.access_codes from anon, authenticated;
 
 insert into storage.buckets (id, name, public) values ('evidencias', 'evidencias', false) on conflict (id) do nothing;
+
+-- v2: numeração de itens por fornecedor e observações das ações
+alter table public.actions add column if not exists item integer;
+create index if not exists idx_actions_data_reuniao on public.actions(data_reuniao);
+create table if not exists public.action_notes (
+  id bigint generated always as identity primary key,
+  action_id bigint not null references public.actions(id) on delete cascade,
+  author_role text not null,
+  author_name text,
+  note text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_action_notes_action on public.action_notes(action_id);
+alter table public.action_notes enable row level security;
+revoke all on public.action_notes from anon, authenticated;
