@@ -343,28 +343,31 @@ tbody tr.clickable:hover { background: #eef6e4; }
 <!-- ======================= MODAL: Adicionar Ação (admin) ======================= -->
 <div class="modal-overlay" id="addModalOverlay">
   <div class="modal">
-    <h2>Nova ação (5W1H)</h2>
+    <h2>Nova ação</h2>
     <form id="addActionForm">
       <label>Fornecedor <small>— selecione na lista</small></label>
       <select id="f_supplier" required></select>
 
-      <label>O quê <small>— o que precisa ser feito</small></label>
-      <textarea id="f_what" required></textarea>
+      <label>Data da reunião</label>
+      <input type="date" id="f_reuniao" required />
 
-      <label>Por quê <small>— motivo / justificativa</small></label>
-      <textarea id="f_why" required></textarea>
-
-      <label>Como <small>— plano de execução</small></label>
-      <textarea id="f_how"></textarea>
-
-      <label>Quem <small>— responsável pela ação</small></label>
-      <input type="text" id="f_who" required />
-
-      <label>Onde <small>— unidade</small></label>
+      <label>Unidade</label>
       <select id="f_where" required></select>
 
-      <label>Quando <small>— prazo previsto</small></label>
-      <input type="date" id="f_when" required />
+      <label>Fase</label>
+      <select id="f_fase" required></select>
+
+      <label>Assunto</label>
+      <textarea id="f_assunto" required></textarea>
+
+      <label>Descrição das ações/comentários</label>
+      <textarea id="f_desc" required></textarea>
+
+      <label>Responsável</label>
+      <input type="text" id="f_resp" required />
+
+      <label>Previsão <small>— prazo previsto</small></label>
+      <input type="date" id="f_prev" required />
 
       <div class="error" id="addActionError"></div>
       <div class="modal-actions">
@@ -627,6 +630,10 @@ document.getElementById("unitFilter").innerHTML = '<option value="">Todas as uni
 document.getElementById("f_where").innerHTML = '<option value="">Selecione a unidade...</option>' +
   UNIDADES.map(u => `<option value="${u}">${u}</option>`).join("");
 
+const FASES = ["Pré_Mobilização","Durante o contrato (Resp: Fornecedor)","Durante o contrato (Resp: Operação)","Durante o contrato (Resp: Prestador)"];
+document.getElementById("f_fase").innerHTML = '<option value="">Selecione a fase...</option>' +
+  FASES.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("");
+
 /* ---------------- FORNECEDORES (admin) ---------------- */
 async function loadSuppliersList() {
   try { ({ data: allSuppliers } = await api("suppliers")); allSuppliers = allSuppliers || []; }
@@ -771,17 +778,6 @@ function renderDrawer({ action: r, notes, supplier }) {
     ${field("Descrição das ações/comentários", dash(desc), true)}
   </div>`;
 
-  if (isNative) {
-    html += `<div class="dsection"><h3>5W1H</h3><div class="dgrid">
-      ${field("O quê", dash(r.what_o_que))}
-      ${field("Por quê", dash(r.why_por_que))}
-      ${field("Como", dash(r.how_como))}
-      ${field("Quem", dash(r.who_quem))}
-      ${field("Onde", dash(r.where_onde))}
-      ${field("Quando", r.when_quando ? fmtDate(r.when_quando) : "—")}
-    </div></div>`;
-  }
-
   // Evidência / arquivo anexado
   const canUpload = r.status !== "para_informacao" && !(r.status === "concluida" && !isAdmin());
   let evi;
@@ -919,6 +915,7 @@ document.getElementById("addActionBtn").addEventListener("click", () => {
   if (!isAdmin()) return;
   document.getElementById("addActionForm").reset();
   document.getElementById("addActionError").textContent = "";
+  document.getElementById("f_reuniao").value = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
   const current = document.getElementById("supplierFilterAdmin").value;
   if (current) document.getElementById("f_supplier").value = current;
   document.getElementById("addModalOverlay").classList.add("open");
@@ -932,12 +929,13 @@ document.getElementById("addActionForm").addEventListener("submit", async (e) =>
   const supplier = document.getElementById("f_supplier").value;
   if (!supplier) { document.getElementById("addActionError").textContent = "Selecione o fornecedor."; return; }
   const fields = {
-    what: document.getElementById("f_what").value.trim(),
-    why: document.getElementById("f_why").value.trim(),
-    how: document.getElementById("f_how").value.trim(),
-    who: document.getElementById("f_who").value.trim(),
-    where: document.getElementById("f_where").value.trim(),
-    when: document.getElementById("f_when").value
+    data_reuniao: document.getElementById("f_reuniao").value,
+    unidade: document.getElementById("f_where").value,
+    fase: document.getElementById("f_fase").value,
+    assunto: document.getElementById("f_assunto").value.trim(),
+    descricao: document.getElementById("f_desc").value.trim(),
+    responsavel: document.getElementById("f_resp").value.trim(),
+    previsao: document.getElementById("f_prev").value
   };
   const btn = e.target.querySelector('button[type="submit"]');
   btn.disabled = true;
