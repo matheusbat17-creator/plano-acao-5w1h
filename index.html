@@ -166,6 +166,8 @@ tbody tr:hover { background: #fafcf7; }
 .footer-brand { text-align: center; font-size: 11px; color: #9aa89a; padding: 20px 0 10px; }
 
 /* ---------- Alternador Ações / Para informação ---------- */
+.table-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.table-top .seg { margin-bottom: 0; }
 .seg { display: inline-flex; border: 1px solid var(--bp-dark-green); border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
 .seg button { background: var(--bp-white); color: var(--bp-dark-green); border: none; padding: 10px 26px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: var(--bp-font); }
 .seg button + button { border-left: 1px solid var(--bp-dark-green); }
@@ -264,12 +266,14 @@ tbody tr.clickable:hover { background: #eef6e4; }
           <label class="dt">até <input type="date" id="dateTo" /></label>
           <button class="btn-small" id="clearDatesBtn" type="button">Limpar datas</button>
         </div>
-        <button class="btn-primary" id="addActionBtn" style="display:none;">+ Adicionar ação</button>
       </div>
 
-      <div class="seg" id="groupSeg">
-        <button type="button" data-g="acoes" class="active">Ações</button>
-        <button type="button" data-g="info">Para informação</button>
+      <div class="table-top">
+        <div class="seg" id="groupSeg">
+          <button type="button" data-g="acoes" class="active">Ações</button>
+          <button type="button" data-g="info">Para informação</button>
+        </div>
+        <button class="btn-primary" id="addActionBtn" style="display:none;">+ Adicionar ação</button>
       </div>
 
       <div class="table-wrap">
