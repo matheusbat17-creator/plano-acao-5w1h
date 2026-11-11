@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plano de Ação 5W1H — bp bioenergy</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root {
+  --bp-dark-green: #004F00;
+  --bp-dark-green-hover: #003c00;
+  --bp-engine-green: #9BFF00;
+  --bp-warm-grey: #F6F7F0;
+  --bp-white: #FFFFFF;
+  --bp-black: #000000;
+  --bp-font: 'bp Sans', 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  --radius: 10px;
+  --border: #e1e4da;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: var(--bp-font);
+  background: var(--bp-warm-grey);
+  color: var(--bp-black);
+}
+header.topbar {
+  background: var(--bp-dark-green);
+  color: var(--bp-white);
+  padding: 14px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+header.topbar .brand { font-weight: 700; font-size: 18px; letter-spacing: .3px; }
+header.topbar .brand span { color: var(--bp-engine-green); }
+header.topbar .sub { font-size: 13px; opacity: .9; }
+header.topbar .userbox { display: flex; align-items: center; gap: 14px; font-size: 14px; }
+header.topbar button.logout {
+  background: transparent; border: 1px solid rgba(255,255,255,.5); color: var(--bp-white);
+  border-radius: 6px; padding: 6px 12px; cursor: pointer; font-family: var(--bp-font);
+}
+header.topbar button.logout:hover { background: rgba(255,255,255,.12); }
+
+/* ---------- Login ---------- */
+#loginScreen {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--bp-dark-green) 0%, #063d06 100%);
+}
+.login-card {
+  background: var(--bp-white); border-radius: var(--radius); padding: 40px 36px;
+  width: 100%; max-width: 380px; box-shadow: 0 10px 40px rgba(0,0,0,.25);
+}
+.login-card h1 { font-size: 20px; margin: 0 0 4px; color: var(--bp-dark-green); }
+.login-card .brandline { font-weight: 700; color: var(--bp-dark-green); font-size: 22px; margin-bottom: 18px; }
+.login-card .brandline span { color: #5aa600; }
+.login-card p.hint { font-size: 13px; color: #555; margin-top: 0; margin-bottom: 20px; }
+.login-card input {
+  width: 100%; padding: 12px 14px; font-size: 15px; border: 1px solid var(--border);
+  border-radius: 8px; margin-bottom: 14px; font-family: var(--bp-font);
+}
+.login-card button.primary {
+  width: 100%; background: var(--bp-dark-green); color: var(--bp-white); border: none;
+  padding: 12px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;
+  font-family: var(--bp-font);
+}
+.login-card button.primary:hover { background: var(--bp-dark-green-hover); }
+.login-card .error { color: #b00020; font-size: 13px; margin-top: 10px; min-height: 18px; }
+.login-card .footnote { font-size: 11px; color: #999; margin-top: 18px; text-align: center; }
+
+/* ---------- App shell ---------- */
+#app { display: none; }
+main { padding: 24px; max-width: 1280px; margin: 0 auto; }
+
+.tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+.tabs button {
+  background: var(--bp-white); border: 1px solid var(--border); padding: 9px 18px;
+  border-radius: 8px; cursor: pointer; font-family: var(--bp-font); font-size: 14px;
+}
+.tabs button.active { background: var(--bp-dark-green); color: var(--bp-white); border-color: var(--bp-dark-green); }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.card {
+  background: var(--bp-white); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 18px; position: relative; overflow: hidden;
+}
+.card .num { font-size: 28px; font-weight: 700; color: var(--bp-dark-green); }
+.card .label { font-size: 13px; color: #555; margin-top: 4px; }
+.card .accent { position: absolute; left:0; top:0; bottom:0; width: 4px; background: var(--bp-engine-green); }
+
+.toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.toolbar .filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.toolbar input[type="text"], .toolbar select {
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-family: var(--bp-font); font-size: 13px;
+}
+button.btn-primary {
+  background: var(--bp-dark-green); color: var(--bp-white); border: none; padding: 10px 16px;
+  border-radius: 8px; cursor: pointer; font-weight: 600; font-family: var(--bp-font); font-size: 14px;
+}
+button.btn-primary:hover { background: var(--bp-dark-green-hover); }
+button.btn-secondary {
+  background: var(--bp-white); color: var(--bp-dark-green); border: 1px solid var(--bp-dark-green);
+  padding: 8px 14px; border-radius: 8px; cursor: pointer; font-family: var(--bp-font); font-size: 13px;
+}
+button.btn-small {
+  background: var(--bp-white); border: 1px solid var(--border); padding: 5px 10px; border-radius: 6px;
+  cursor: pointer; font-size: 12px; font-family: var(--bp-font);
+}
+button.btn-conclude {
+  background: var(--bp-dark-green); color: var(--bp-white); border: none; padding: 6px 10px;
+  border-radius: 6px; cursor: pointer; font-size: 12px; font-family: var(--bp-font);
+}
+button:disabled { opacity: .45; cursor: not-allowed; }
+
+.table-wrap { background: var(--bp-white); border: 1px solid var(--border); border-radius: var(--radius); overflow: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1100px; }
+thead th {
+  text-align: left; background: var(--bp-warm-grey); padding: 10px 12px; font-weight: 600;
+  border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0;
+}
+tbody td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tbody tr:hover { background: #fafcf7; }
+.desc-cell { max-width: 280px; }
+
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.badge.em_andamento { background: #e9f0ff; color: #1a4fba; }
+.badge.atrasada { background: #ffe9e9; color: #b00020; }
+.badge.concluida { background: #e4f7e1; color: #1f7a1f; }
+.badge.cancelada { background: #eee; color: #555; }
+.badge.para_informacao { background: #fff6da; color: #8a6400; }
+
+.evidence-cell a { font-size: 12px; color: var(--bp-dark-green); text-decoration: none; }
+.evidence-cell input[type=file] { font-size: 11px; max-width: 150px; }
+
+.pagination { display: flex; justify-content: center; align-items: center; gap: 10px; padding: 14px; font-size: 13px; }
+
+/* ---------- Modal ---------- */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  align-items: center; justify-content: center; z-index: 100; padding: 16px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--bp-white); border-radius: var(--radius); padding: 28px; width: 100%; max-width: 560px;
+  max-height: 90vh; overflow-y: auto;
+}
+.modal h2 { color: var(--bp-dark-green); margin-top: 0; font-size: 19px; }
+.modal label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 5px; }
+.modal label small { font-weight: 400; color: #777; }
+.modal input, .modal textarea, .modal select {
+  width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-family: var(--bp-font); font-size: 14px;
+}
+.modal textarea { min-height: 70px; resize: vertical; }
+.modal .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.modal .error { color: #b00020; font-size: 13px; margin-top: 10px; }
+
+.toast {
+  position: fixed; bottom: 20px; right: 20px; background: var(--bp-dark-green); color: var(--bp-white);
+  padding: 12px 18px; border-radius: 8px; font-size: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.2);
+  display: none; z-index: 200; max-width: 360px;
+}
+.toast.error { background: #b00020; }
+.empty-state { text-align: center; padding: 40px 20px; color: #777; font-size: 14px; }
+.footer-brand { text-align: center; font-size: 11px; color: #9aa89a; padding: 20px 0 10px; }
+</style>
+</head>
+<body>
+
+<!-- ======================= LOGIN ======================= -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="brandline">bp<span>bioenergy</span></div>
+    <h1>Plano de Ação 5W1H</h1>
+    <p class="hint">Informe o seu código de acesso (Supplier Code) para consultar e gerenciar suas ações.</p>
+    <form id="loginForm">
+      <input type="text" id="codeInput" placeholder="Código de acesso" autocomplete="off" required />
+      <button type="submit" class="primary">Entrar</button>
+    </form>
+    <div class="error" id="loginError"></div>
+    <div class="footnote">Acesso restrito. Seus dados são protegidos e segregados por fornecedor conforme a LGPD.</div>
+  </div>
+</div>
+
+<!-- ======================= APP ======================= -->
+<div id="app">
+  <header class="topbar">
+    <div>
+      <div class="brand">bp <span>bioenergy</span> · Plano de Ação 5W1H</div>
+      <div class="sub" id="supplierLabel"></div>
+    </div>
+    <div class="userbox">
+      <span id="roleLabel"></span>
+      <button class="logout" id="logoutBtn">Sair</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="tabs" id="tabsBar">
+      <button class="active" data-tab="dashboard">Painel</button>
+      <button data-tab="history" id="historyTabBtn" style="display:none;">Histórico (Admin)</button>
+    </div>
+
+    <!-- -------- DASHBOARD TAB -------- -->
+    <section id="tab-dashboard">
+      <div class="cards" id="statusCards"></div>
+
+      <div class="toolbar">
+        <div class="filters">
+          <input type="text" id="searchInput" placeholder="Buscar por assunto, responsável..." />
+          <select id="supplierFilterAdmin" style="display:none;"></select>
+        </div>
+        <button class="btn-primary" id="addActionBtn">+ Adicionar ação</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th id="firstColHeader">Item</th>
+              <th>O quê / Assunto</th>
+              <th>Quem</th>
+              <th>Quando</th>
+              <th>Onde</th>
+              <th>Por quê / Fase</th>
+              <th>Status</th>
+              <th>Evidência</th>
+              <th>Ação</th>
+            </tr>
+          </thead>
+          <tbody id="openActionsBody"></tbody>
+        </table>
+        <div class="empty-state" id="openActionsEmpty" style="display:none;">Nenhuma ação em aberto encontrada.</div>
+      </div>
+    </section>
+
+    <!-- -------- HISTORY TAB (admin only) -------- -->
+    <section id="tab-history" style="display:none;">
+      <div class="toolbar">
+        <div class="filters">
+          <input type="text" id="histSearch" placeholder="Buscar..." />
+          <select id="histStatus">
+            <option value="">Todos os status</option>
+            <option value="concluida">Concluída</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+          <select id="histSupplier"></select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Fornecedor</th>
+              <th>Assunto</th>
+              <th>Responsável</th>
+              <th>Status</th>
+              <th>Concluída em</th>
+              <th>Evidência</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+        <div class="empty-state" id="historyEmpty" style="display:none;">Nenhum registro encontrado.</div>
+      </div>
+      <div class="pagination">
+        <button class="btn-small" id="histPrev">« Anterior</button>
+        <span id="histPageLabel">Página 1</span>
+        <button class="btn-small" id="histNext">Próxima »</button>
+      </div>
+    </section>
+
+    <div class="footer-brand">bp bioenergy · Gestão de Terceiros · Plano de Ação 5W1H</div>
+  </main>
+</div>
+
+<!-- ======================= MODAL: Adicionar Ação ======================= -->
+<div class="modal-overlay" id="addModalOverlay">
+  <div class="modal">
+    <h2>Nova ação (5W1H)</h2>
+    <form id="addActionForm">
+      <label>O quê <small>— o que precisa ser feito</small></label>
+      <textarea id="f_what" required></textarea>
+
+      <label>Por quê <small>— motivo / justificativa</small></label>
+      <textarea id="f_why" required></textarea>
+
+      <label>Como <small>— plano de execução</small></label>
+      <textarea id="f_how"></textarea>
+
+      <label>Quem <small>— responsável pela ação</small></label>
+      <input type="text" id="f_who" required />
+
+      <label>Onde <small>— unidade / local</small></label>
+      <input type="text" id="f_where" />
+
+      <label>Quando <small>— prazo previsto</small></label>
+      <input type="date" id="f_when" required />
+
+      <div class="error" id="addActionError"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" id="cancelAddBtn">Cancelar</button>
+        <button type="submit" class="btn-primary">Salvar ação</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ======================= MODAL: Concluir (admin) ======================= -->
+<div class="modal-overlay" id="concludeModalOverlay">
+  <div class="modal">
+    <h2>Concluir ação</h2>
+    <p id="concludeInfo" style="font-size:14px; color:#444;"></p>
+    <p style="font-size:13px; color:#777;">Confirme que a evidência enviada pelo fornecedor foi verificada antes de concluir.</p>
+    <div class="error" id="concludeError"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="cancelConcludeBtn">Cancelar</button>
+      <button type="button" class="btn-primary" id="confirmConcludeBtn">Confirmar conclusão</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   CONFIGURAÇÃO — projeto Supabase "plano-acao-5w1h"
+   A anon key é pública por natureza: ela NÃO dá acesso a nenhuma
+   tabela. Todo acesso a dados passa pela Edge Function "api",
+   que valida o código de acesso e isola os dados por fornecedor.
+   ============================================================ */
+const SUPABASE_URL = "https://sotgxpovcxzypopmuoot.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdGd4cG92Y3h6eXBvcG11b290Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQzNTkyNDcsImV4cCI6MjEwOTkzNTI0N30.x4_RGdxBr0hbTIYVFK1h6kH9gnZ0BAvXMdpTx1mfn4k";
+const API_URL = SUPABASE_URL + "/functions/v1/api";
+/* ============================================================ */
+
+const STATUS_LABELS = {
+  em_andamento: "Em andamento",
+  atrasada: "Atrasada",
+  concluida: "Concluída",
+  cancelada: "Cancelada",
+  para_informacao: "Para informação"
+};
+const STATUS_ICON = {
+  em_andamento: "◷",
+  atrasada: "⚠",
+  concluida: "✓",
+  cancelada: "✕",
+  para_informacao: "ℹ"
+};
+
+let session = null; // { token, app_role, supplier_code, razao_social }
+let allSuppliers = [];
+let histPage = 0;
+const HIST_PAGE_SIZE = 25;
+let storageClient = null;
+
+/* ---------------- CHAMADA À API ---------------- */
+async function api(op, params) {
+  let res;
+  try {
+    res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY },
+      body: JSON.stringify({ op, token: session ? session.token : undefined, ...(params || {}) })
+    });
+  } catch (e) {
+    throw new Error("Sem conexão com o servidor.");
+  }
+  let data = {};
+  try { data = await res.json(); } catch (e) {}
+  if (res.status === 401 && session) { logout(); showToast(data.error || "Sessão expirada.", true); throw new Error(data.error || "Sessão expirada."); }
+  if (!res.ok) throw new Error(data.error || "Erro " + res.status);
+  return data;
+}
+
+function showToast(msg, isError) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast" + (isError ? " error" : "");
+  t.style.display = "block";
+  setTimeout(() => { t.style.display = "none"; }, 3500);
+}
+
+/* ---------------- SESSÃO ---------------- */
+function restoreSession() {
+  const raw = sessionStorage.getItem("pa_session");
+  if (!raw) return false;
+  try { session = JSON.parse(raw); return !!session.token; } catch (e) { return false; }
+}
+
+function logout() {
+  sessionStorage.removeItem("pa_session");
+  session = null;
+  document.getElementById("app").style.display = "none";
+  document.getElementById("loginScreen").style.display = "flex";
+  document.getElementById("codeInput").value = "";
+}
+
+/* ---------------- LOGIN ---------------- */
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const code = document.getElementById("codeInput").value.trim();
+  const errEl = document.getElementById("loginError");
+  errEl.textContent = "";
+  if (!code) return;
+  try {
+    const row = await api("login", { code });
+    session = { token: row.token, app_role: row.app_role, supplier_code: row.supplier_code, razao_social: row.razao_social };
+    sessionStorage.setItem("pa_session", JSON.stringify(session));
+    await enterApp();
+  } catch (err) {
+    errEl.textContent = err.message === "Código inválida." || /inválido/i.test(err.message)
+      ? "Código inválido. Verifique e tente novamente." : err.message;
+  }
+});
+
+document.getElementById("logoutBtn").addEventListener("click", logout);
+
+/* ---------------- ENTRAR NO APP ---------------- */
+async function enterApp() {
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("app").style.display = "block";
+
+  const isAdmin = session.app_role === "admin";
+  document.getElementById("roleLabel").textContent = isAdmin ? "Perfil: Administrador" : "Fornecedor: " + (session.razao_social || session.supplier_code);
+  document.getElementById("supplierLabel").textContent = isAdmin ? "Visão consolidada de todos os fornecedores" : "Código: " + session.supplier_code;
+  document.getElementById("historyTabBtn").style.display = isAdmin ? "inline-block" : "none";
+  document.getElementById("supplierFilterAdmin").style.display = isAdmin ? "inline-block" : "none";
+  document.getElementById("firstColHeader").textContent = isAdmin ? "Fornecedor" : "Item";
+
+  if (isAdmin) await loadSuppliersList();
+  await loadDashboard();
+}
+
+/* ---------------- TABS ---------------- */
+document.getElementById("tabsBar").addEventListener("click", (e) => {
+  if (e.target.tagName !== "BUTTON") return;
+  const tab = e.target.dataset.tab;
+  document.querySelectorAll("#tabsBar button").forEach(b => b.classList.remove("active"));
+  e.target.classList.add("active");
+  document.getElementById("tab-dashboard").style.display = tab === "dashboard" ? "block" : "none";
+  document.getElementById("tab-history").style.display = tab === "history" ? "block" : "none";
+  if (tab === "history") loadHistory();
+});
+
+/* ---------------- FORNECEDORES (admin) ---------------- */
+async function loadSuppliersList() {
+  try {
+    const { data } = await api("suppliers");
+    allSuppliers = data || [];
+  } catch (e) { console.error(e); return; }
+  const sel1 = document.getElementById("supplierFilterAdmin");
+  const sel2 = document.getElementById("histSupplier");
+  const opts = '<option value="">Todos os fornecedores</option>' +
+    allSuppliers.map(s => `<option value="${escapeHtml(s.supplier_code)}">${escapeHtml(s.razao_social)} (${escapeHtml(s.supplier_code)})</option>`).join("");
+  sel1.innerHTML = opts;
+  sel2.innerHTML = opts;
+}
+
+/* ---------------- DASHBOARD ---------------- */
+function currentSupplierFilter() {
+  return session.app_role === "admin" ? document.getElementById("supplierFilterAdmin").value : session.supplier_code;
+}
+
+async function loadDashboard() {
+  await Promise.all([loadStatusCards(), loadOpenActions()]);
+}
+
+async function loadStatusCards() {
+  let counts;
+  try { ({ counts } = await api("counts", { supplier: currentSupplierFilter() })); }
+  catch (e) { console.error(e); return; }
+  document.getElementById("statusCards").innerHTML = Object.keys(STATUS_LABELS).map(st => `
+    <div class="card">
+      <div class="accent"></div>
+      <div class="num">${counts[st] || 0}</div>
+      <div class="label">${STATUS_ICON[st]} ${STATUS_LABELS[st]}</div>
+    </div>
+  `).join("");
+}
+
+async function loadOpenActions() {
+  const search = document.getElementById("searchInput").value.trim();
+  try {
+    const { data } = await api("list_open", { supplier: currentSupplierFilter(), search });
+    renderOpenActions(data || []);
+  } catch (e) {
+    console.error(e);
+    showToast("Erro ao carregar ações: " + e.message, true);
+  }
+}
+
+function fmtDate(d) {
+  if (!d) return "—";
+  const parts = d.split("-");
+  if (parts.length !== 3) return d;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+function escapeHtml(s) {
+  if (s === null || s === undefined) return "";
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+
+function renderOpenActions(rows) {
+  const body = document.getElementById("openActionsBody");
+  const empty = document.getElementById("openActionsEmpty");
+  const isAdmin = session.app_role === "admin";
+
+  if (!rows.length) { body.innerHTML = ""; empty.style.display = "block"; return; }
+  empty.style.display = "none";
+
+  body.innerHTML = rows.map(r => {
+    const what = r.what_o_que || r.assunto || "—";
+    const who = r.who_quem || r.responsavel || "—";
+    const when = r.when_quando || r.previsao_texto || r.data_reuniao;
+    const where = r.where_onde || r.unidade || "—";
+    const why = r.why_por_que || r.fase || "—";
+
+    const evidenceCell = r.evidencia_path
+      ? `<a href="#" class="view-evidence" data-path="${escapeHtml(r.evidencia_path)}">Ver arquivo</a><br/><small>${escapeHtml(r.evidencia_nome || "")}</small>`
+      : `<input type="file" class="evidence-input" data-id="${r.id}" />`;
+
+    const actionCell = isAdmin
+      ? `<button class="btn-conclude" data-id="${r.id}" data-subject="${escapeHtml(what)}">Concluir</button>`
+      : "—";
+
+    return `
+      <tr>
+        <td>${isAdmin ? escapeHtml(r.supplier_code) : r.id}</td>
+        <td class="desc-cell">${escapeHtml(what)}</td>
+        <td>${escapeHtml(who)}</td>
+        <td>${typeof when === "string" && /^\d{4}-\d{2}-\d{2}$/.test(when) ? fmtDate(when) : escapeHtml(when || "—")}</td>
+        <td>${escapeHtml(where)}</td>
+        <td class="desc-cell">${escapeHtml(why)}</td>
+        <td><span class="badge ${r.status}">${STATUS_ICON[r.status]} ${STATUS_LABELS[r.status]}</span></td>
+        <td class="evidence-cell">${evidenceCell}</td>
+        <td>${actionCell}</td>
+      </tr>
+    `;
+  }).join("");
+
+  document.querySelectorAll(".evidence-input").forEach(inp => inp.addEventListener("change", onEvidenceUpload));
+  document.querySelectorAll(".view-evidence").forEach(a => a.addEventListener("click", onViewEvidence));
+  document.querySelectorAll(".btn-conclude").forEach(btn => btn.addEventListener("click", onOpenConcludeModal));
+}
+
+/* ---------------- UPLOAD DE EVIDÊNCIA ---------------- */
+async function onEvidenceUpload(e) {
+  const input = e.target;
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 20 * 1024 * 1024) { showToast("Arquivo acima de 20 MB.", true); input.value = ""; return; }
+  const actionId = Number(input.dataset.id);
+
+  try {
+    showToast("Enviando evidência...");
+    const { path, token } = await api("evidence_upload_url", { action_id: actionId, filename: file.name });
+    if (!storageClient) storageClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+    const { error: upErr } = await storageClient.storage.from("evidencias").uploadToSignedUrl(path, token, file);
+    if (upErr) throw new Error(upErr.message);
+    await api("evidence_register", { action_id: actionId, path, nome: file.name });
+    showToast("Evidência enviada com sucesso.");
+    await loadOpenActions();
+  } catch (err) {
+    showToast("Erro ao enviar evidência: " + err.message, true);
+    input.value = "";
+  }
+}
+
+async function onViewEvidence(e) {
+  e.preventDefault();
+  const path = e.target.dataset.path;
+  try {
+    const { url } = await api("evidence_url", { path });
+    window.open(url, "_blank");
+  } catch (err) { showToast("Não foi possível abrir a evidência.", true); }
+}
+
+/* ---------------- CONCLUIR AÇÃO (admin) ---------------- */
+let actionIdToConclude = null;
+function onOpenConcludeModal(e) {
+  actionIdToConclude = Number(e.target.dataset.id);
+  document.getElementById("concludeInfo").textContent = "Ação: " + e.target.dataset.subject;
+  document.getElementById("concludeError").textContent = "";
+  document.getElementById("concludeModalOverlay").classList.add("open");
+}
+document.getElementById("cancelConcludeBtn").addEventListener("click", () => {
+  document.getElementById("concludeModalOverlay").classList.remove("open");
+});
+document.getElementById("confirmConcludeBtn").addEventListener("click", async () => {
+  try {
+    await api("conclude", { action_id: actionIdToConclude });
+  } catch (err) {
+    document.getElementById("concludeError").textContent = "Erro ao concluir: " + err.message;
+    return;
+  }
+  document.getElementById("concludeModalOverlay").classList.remove("open");
+  showToast("Ação concluída com sucesso.");
+  await loadDashboard();
+});
+
+/* ---------------- ADICIONAR AÇÃO (salva no Supabase) ---------------- */
+document.getElementById("addActionBtn").addEventListener("click", () => {
+  document.getElementById("addActionForm").reset();
+  document.getElementById("addActionError").textContent = "";
+  document.getElementById("addModalOverlay").classList.add("open");
+});
+document.getElementById("cancelAddBtn").addEventListener("click", () => {
+  document.getElementById("addModalOverlay").classList.remove("open");
+});
+document.getElementById("addActionForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const isAdmin = session.app_role === "admin";
+  const targetSupplier = isAdmin ? document.getElementById("supplierFilterAdmin").value : session.supplier_code;
+
+  if (isAdmin && !targetSupplier) {
+    document.getElementById("addActionError").textContent = "Selecione um fornecedor no filtro do painel antes de criar a ação.";
+    return;
+  }
+
+  const fields = {
+    what: document.getElementById("f_what").value.trim(),
+    why: document.getElementById("f_why").value.trim(),
+    how: document.getElementById("f_how").value.trim(),
+    who: document.getElementById("f_who").value.trim(),
+    where: document.getElementById("f_where").value.trim(),
+    when: document.getElementById("f_when").value
+  };
+
+  const btn = e.target.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  try {
+    await api("create_action", { supplier: targetSupplier, fields });
+  } catch (err) {
+    document.getElementById("addActionError").textContent = "Erro ao salvar: " + err.message;
+    btn.disabled = false;
+    return;
+  }
+  btn.disabled = false;
+  document.getElementById("addModalOverlay").classList.remove("open");
+  showToast("Ação criada com sucesso.");
+  await loadDashboard();
+});
+
+/* ---------------- FILTROS ---------------- */
+document.getElementById("searchInput").addEventListener("input", debounce(loadOpenActions, 400));
+document.getElementById("supplierFilterAdmin").addEventListener("change", loadDashboard);
+
+function debounce(fn, wait) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+}
+
+/* ---------------- HISTÓRICO (admin) ---------------- */
+async function loadHistory() {
+  const search = document.getElementById("histSearch").value.trim();
+  const status = document.getElementById("histStatus").value;
+  const supplier = document.getElementById("histSupplier").value;
+
+  let res;
+  try { res = await api("list_history", { search, status, supplier, page: histPage }); }
+  catch (e) { console.error(e); showToast("Erro ao carregar histórico.", true); return; }
+
+  renderHistory(res.data || []);
+  document.getElementById("histPageLabel").textContent = `Página ${histPage + 1}`;
+  document.getElementById("histPrev").disabled = histPage === 0;
+  document.getElementById("histNext").disabled = !res.count || (histPage + 1) * HIST_PAGE_SIZE >= res.count;
+}
+
+function renderHistory(rows) {
+  const body = document.getElementById("historyBody");
+  const empty = document.getElementById("historyEmpty");
+  if (!rows.length) { body.innerHTML = ""; empty.style.display = "block"; return; }
+  empty.style.display = "none";
+
+  body.innerHTML = rows.map(r => {
+    const sup = allSuppliers.find(s => s.supplier_code === r.supplier_code);
+    const evidenceCell = r.evidencia_path
+      ? `<a href="#" class="view-evidence-h" data-path="${escapeHtml(r.evidencia_path)}">Ver arquivo</a>`
+      : "—";
+    return `
+      <tr>
+        <td>${escapeHtml(sup ? sup.razao_social : r.supplier_code)}</td>
+        <td class="desc-cell">${escapeHtml(r.what_o_que || r.assunto)}</td>
+        <td>${escapeHtml(r.who_quem || r.responsavel || "—")}</td>
+        <td><span class="badge ${r.status}">${STATUS_ICON[r.status]} ${STATUS_LABELS[r.status]}</span></td>
+        <td>${r.concluida_em ? new Date(r.concluida_em).toLocaleDateString("pt-BR") : "—"}</td>
+        <td class="evidence-cell">${evidenceCell}</td>
+      </tr>
+    `;
+  }).join("");
+
+  document.querySelectorAll(".view-evidence-h").forEach(a => a.addEventListener("click", onViewEvidence));
+}
+
+document.getElementById("histSearch").addEventListener("input", debounce(() => { histPage = 0; loadHistory(); }, 400));
+document.getElementById("histStatus").addEventListener("change", () => { histPage = 0; loadHistory(); });
+document.getElementById("histSupplier").addEventListener("change", () => { histPage = 0; loadHistory(); });
+document.getElementById("histPrev").addEventListener("click", () => { if (histPage > 0) { histPage--; loadHistory(); } });
+document.getElementById("histNext").addEventListener("click", () => { histPage++; loadHistory(); });
+
+/* ---------------- INICIALIZAÇÃO ---------------- */
+(function init() {
+  if (restoreSession()) enterApp().catch(() => logout());
+})();
+</script>
+</body>
+</html>
